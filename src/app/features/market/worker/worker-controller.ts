@@ -34,7 +34,7 @@ export class WorkerController {
     private readonly clock: Clock,
     private readonly timers: TimerScheduler,
     private readonly factory: GeneratorFactory,
-    private readonly output: (event: WorkerEvent, transfer: Transferable[]) => void,
+    private readonly output: (event: WorkerEvent) => void,
     private readonly close: () => void,
   ) {
     this.publisher = new SnapshotPublisher(
@@ -45,7 +45,7 @@ export class WorkerController {
         return this.accumulator.snapshotValues();
       },
       (snapshot) => {
-        this.emit(snapshot, [snapshot.numeric]);
+        this.emit(snapshot);
       },
       () => {
         this.fail(ErrorCode.InvalidProtocol);
@@ -205,9 +205,9 @@ export class WorkerController {
     generator?.dispose();
   }
 
-  private emit(event: WorkerEvent, transfer: Transferable[] = []): void {
+  private emit(event: WorkerEvent): void {
     try {
-      this.output(event, transfer);
+      this.output(event);
     } catch {
       this.fail(ErrorCode.WorkerFailed);
     }

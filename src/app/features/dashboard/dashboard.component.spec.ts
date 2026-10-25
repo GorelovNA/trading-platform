@@ -3,7 +3,7 @@ import { DashboardComponent } from './dashboard.component';
 import { ProducerService } from '../market/client/producer.service';
 import { PRODUCER_ENVIRONMENT } from '../market/client/producer-environment';
 import { MetricAccumulator } from '../market/domain/metric-accumulator';
-import { encodeSnapshot } from '../market/protocol/snapshot-codec.helper';
+import { WorkerEventType } from '../market/models/protocol.model';
 import { ClientHarness } from '../../../../tests/support/market-fakes.helper';
 
 describe('Dashboard', () => {
@@ -44,13 +44,14 @@ describe('Dashboard', () => {
       Uint32Array.from([0, 10000, 10, 9996, 10000, 600, 400, 0, 10200, 30, 10196, 10200, 600, 400]),
       2,
     );
-    h.worker.message(
-      encodeSnapshot(accumulator.snapshotValues(), {
-        runId: 1,
-        sequence: 1,
-        latestBatchEpochMs: 1000050,
-      }),
-    );
+    h.worker.message({
+      v: 1,
+      type: WorkerEventType.Snapshot,
+      ...accumulator.snapshotValues(),
+      runId: 1,
+      sequence: 1,
+      latestBatchEpochMs: 1000050,
+    });
     h.paint();
     await fixture.whenStable();
     expect(element.querySelector('tbody tr')).toBe(firstRow);

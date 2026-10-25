@@ -1,5 +1,10 @@
 # Realtime market dashboard: low-level design and implementation plan
 
+Snapshot transport was simplified on 2026-10-25: ordinary metric objects are
+structured-cloned and validated once on receipt. Backpressure and lifecycle
+guards are unchanged. Earlier milestone evidence describing buffer transfers
+records the previous implementation; see [current validation evidence](production-validation.md#snapshot-transport-simplification).
+
 Status: local implementation and validation complete through step 7, with browser availability limitations recorded below. Step 8 remains planned.
 
 Date: 2026-10-25.
@@ -59,7 +64,7 @@ src/app/
         validate-command.ts
         validate-event.ts
         batch-layout.ts          # Rust output schema and validation
-        snapshot-codec.ts         # bounded numeric buffer + bigint envelope
+        validate-snapshot.helper.ts # boundary validation of metric objects
       worker/
         market.worker.ts         # minimal worker entry and wiring
         worker-controller.ts     # lifecycle reducer/controller
@@ -291,21 +296,14 @@ type Command =
   | { v: 1; type: 'snapshot-ack'; runId: number; sequence: number }
   | { v: 1; type: 'dispose' };
 
-interface SnapshotTotals {
-  volume: bigint;
-  notionalCents: bigint;
-}
-
 interface SnapshotMessage {
   v: 1;
   type: 'snapshot';
   runId: number;
   sequence: number;
-  rowCount: number;
   generatedUpdates: bigint;
   latestBatchEpochMs: number;
-  numeric: ArrayBuffer;
-  totals: readonly SnapshotTotals[];
+  metrics: readonly InstrumentMetrics[];
 }
 
 type WorkerEvent =
@@ -331,27 +329,31 @@ type WorkerEvent =
 
 Control acknowledgement means the command has been handled; it does not imply that the associated snapshot has painted. Ready means the module is usable, not that generation has started. Error messages contain allow-listed codes, never arbitrary HTML, stack traces, file paths, or fetched response bodies.
 
-`parseCommand(unknown)` and `parseWorkerEvent(unknown)` return discriminated parse results. Runtime checks are mandatory even though internal constructors are typed. Reject unknown variants/version, malformed IDs, invalid settings, invalid seed (outside u32), wrong buffer type/size, unexpected row count, invalid numeric values, and inconsistent bigint totals. Permit no SharedArrayBuffer. Do not accept JSON strings in place of structured-clone messages.
+`parseCommand(unknown)` and `parseWorkerEvent(unknown)` return discriminated parse results. Runtime checks are mandatory even though internal constructors are typed. Reject unknown variants/version, malformed IDs, invalid settings, invalid seed (outside u32), invalid metric arrays, unexpected row count, invalid numeric values, and inconsistent bigint totals. Do not accept JSON strings in place of structured-clone messages.
 
 Validation has two stages: structural validation uses the message's own bounded row count (1–50), followed by current-run validation against the active requested count and previously accepted totals. A structurally valid stale snapshot is discarded/acknowledged before current-run checks; otherwise an old five-row snapshot could incorrectly fault a new ten-instrument run. Do not retain per-run validation histories.
 
-### 6.2 Snapshot ABI v1
+### 6.2 Snapshot metric objects
 
-`numeric` contains `rowCount * 5` Float64 values in instrument ID order, at most 2,000 bytes. The worker and page share browser architecture; this is an in-process numeric format, not a network file format.
+Snapshots carry up to 50 ordinary `InstrumentMetrics` objects in instrument ID
+order. Each row contains nullable price/spread/imbalance, bigint volume, and a
+nullable exact VWAP numerator/denominator pair. `postMessage(snapshot)` clones
+these values; no transfer list or secondary binary format is involved.
 
-| Float64 offset | Meaning                                                   |
-| -------------- | --------------------------------------------------------- |
-| 0              | Instrument ID, an integer equal to the row index          |
-| 1              | Flags: bit 0 has market data; bit 1 has defined imbalance |
-| 2              | Latest trade price cents, or 0 if unavailable             |
-| 3              | Latest spread cents, or 0 if unavailable                  |
-| 4              | Imbalance, or 0 if unavailable                            |
+`parseSnapshot` runs once through `parseWorkerEvent` on receipt. It checks
+metadata and row bounds, row identities, price/spread ranges, finite imbalance
+in [-1, +1], nonnegative bigint volume, and consistent nullability. Populated rows
+require positive volume and a VWAP denominator equal to volume; the numerator
+must fall between volume and volume times the maximum generated price. Empty
+rows require null metrics and zero volume. Aggregate volume remains between
+generated-update count and that count times the maximum trade quantity, and
+populated rows cannot exceed generated updates.
 
-Valid flags are 0, 1, and 3. Undefined fields must contain canonical zero. When present, price/spread must be positive integers within simulation bounds and imbalance finite in [-1, +1]. `totals.length` must equal row count, with nonnegative bigint values. No-data rows require zero totals; data rows require positive volume/notional. Validate `volume <= notionalCents <= volume * 1_000_009n`. Validate aggregate volume is between `generatedUpdates` and `generatedUpdates * 1_000n` after any trade, and that the number of data rows does not exceed `generatedUpdates`. For successive current-run snapshots, generated-update count and per-instrument totals cannot decrease.
-
-The worker captures numeric fields and totals synchronously from the same accumulator state, then calls `postMessage(snapshot, [snapshot.numeric])`. The transferred buffer is independently allocated, never Wasm linear memory. Its sender view is unusable after transfer. Bigints remain in the structured-clone envelope, avoiding fixed-width truncation and JSON limitations [1].
-
-The decoder constructs immutable `InstrumentMetrics[]`, including exact VWAP pairs. Angular never sees the wire buffer or raw trades. Drop buffer references after decoding. No buffer pool or return transfer is needed for 2 KB payloads at at most 20 Hz.
+The parser constructs immutable owned rows. Current-run progress checks remain
+separate: sequence must increase and generated-update counts and per-instrument
+totals cannot decrease. Stale runs are discarded before these progress checks.
+The worker captures fresh metric objects synchronously from its accumulator;
+Wasm generation and its packed batch format are unchanged.
 
 ### 6.3 Ordering and backpressure
 
@@ -447,7 +449,7 @@ Start the singleton from the root shell, without awaiting Wasm in Angular bootst
 
 ### 7.6 Frame commit and visibility
 
-On a valid current-run snapshot, decode and retain one pending model; request one animation frame. In that callback, recheck epoch/run/sequence, update a single immutable snapshot signal, then acknowledge. Angular's zoneless scheduling handles the resulting view work; do not call `detectChanges()` per row.
+On a valid current-run snapshot, retain one validated pending model; request one animation frame. In that callback, recheck epoch/run/sequence, update a single immutable snapshot signal, then acknowledge. Angular's zoneless scheduling handles the resulting view work; do not call `detectChanges()` per row.
 
 When hidden, animation frames may stop. Commit received state and acknowledge without waiting for a frame, so background visibility cannot deadlock the publisher. A visibility-change listener drains a pending frame when entering hidden state; entering visible state shows the latest committed snapshot. Background rendering latency is not part of the foreground target.
 
@@ -589,7 +591,7 @@ Cloudflare project/repository linkage, branch selection, and publication are per
 | Formatting            | Half-cent ties; below/above ties; huge bigint dollar/volume values; null/zero denominators; negative-zero imbalance; no mutation of rational totals                                              |
 | Batch validation      | Invalid field/length late in batch causes no partial accounting                                                                                                                                  |
 | Snapshot codec        | All flag combinations; exact bigint round-trip; bad length/row count/ID/flags/NaN/ranges; totals consistency; no aliasing to mutable accumulators                                                |
-| Transfer semantics    | Real structuredClone transfer detaches sender buffer and preserves receiver values; browser smoke proves real worker transfer                                                                    |
+| Snapshot ownership    | Structured cloning preserves bigint values and independent row ownership; browser smoke exercises real worker messages                                                                           |
 | Worker controller     | Reset/repeated reset; pause/resume including pending timer; no catch-up; retained PRNG/totals; old timer token ignored; dispose frees once; thrown generator/load failure                        |
 | Publisher             | Leading send; no more than 20 normal sends/sec; outstanding ACK holds queue to one; coalesced latest totals include every trade; stale/duplicate ACK; pause flush                                |
 | Facade                | Single worker through navigation; Apply invalidates queued old frame; old ACK clears transport but not new UI state; rapid Apply collapses to latest; retired worker ignored; retry and disposal |
@@ -608,7 +610,7 @@ Measure production builds on a documented machine and browser, with 50 instrumen
 | Measure                                                        | Initial target                                                              |
 | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Foreground latest-batch completion to visible update           | p95 under 100 ms; investigate excursions over 200 ms                        |
-| Snapshot decode/format/signal commit on main thread            | p95 under 8 ms                                                              |
+| Snapshot validation/format/signal commit on main thread        | p95 under 8 ms                                                              |
 | Synchronous worker batch generation + validation + aggregation | p95 under 25 ms, below the 50 ms interval                                   |
 | Main-thread long tasks attributable to streaming               | None over 50 ms during steady state                                         |
 | Outstanding snapshots                                          | At most one per active run                                                  |
@@ -748,7 +750,7 @@ Audit date: 2026-10-25. This maps planned work, not completed implementation or 
 | GitHub repository with source/tests/README; automatic deployment on pushes; accessible repo/demo links                             | Sections 10.2 and 12, step 8 | Clean-clone setup, branch-push deployment checks, and interviewer access verification |
 | Understand, explain, and modify implementation during interview                                                                    | Section 12, step 8           | Architecture walkthrough and small-change/test/deployment rehearsal                   |
 
-Source requirements do not demand a backend, real trading, a realistic exchange model, charts, persistence, end-to-end automation, or a formal benchmark report. Rust, bigint, Signal Forms, transferable buffers, 20 Hz publication, CSP, and numerical latency targets are chosen design details or user priorities. They must support delivery without being confused with additional requirements from the supplied task.
+Source requirements do not demand a backend, real trading, a realistic exchange model, charts, persistence, end-to-end automation, or a formal benchmark report. Rust, bigint, Signal Forms, structured-cloned snapshots, 20 Hz publication, CSP, and numerical latency targets are chosen design details or user priorities. They must support delivery without being confused with additional requirements from the supplied task.
 
 ## References
 

@@ -62,3 +62,45 @@ There was no continuing linear heap growth. The page finished below its initial 
 ## Platform limitations
 
 Firefox and WebKit launch attempts failed because Playwright browser binaries `firefox-1544` and `webkit-2361` are not installed. Their UI, worker, CSP, and performance behavior remain unverified. Chrome results on this machine are not universal timing guarantees or a substitute for later cross-browser verification. HTTPS/HSTS and hosted routing/deployment are outside this local step.
+
+## Snapshot transport simplification
+
+Follow-up on 2026-10-25. This section supersedes the buffer-transfer implementation
+and measurements above for the current code. Historical milestone evidence is
+retained, not presented as a new verification of the object transport.
+
+Snapshots now use ordinary metric objects and one receiving validation pass.
+Packed Wasm batches, exact bigint accounting, one outstanding snapshot, ACKs,
+publication throttling, frame scheduling, watchdogs, and lifecycle guards remain.
+
+- Full repository check: 402 Angular/Vitest tests across 18 files, 9 Rust tests,
+  5 compiled-Wasm tests, and 5 tooling tests passed. Coverage is 93.95% statements,
+  95.81% branches, 93.83% functions, and 93.84% lines; thresholds remain 90%.
+- Initial bundle is 256.56 kB, compared with the previously recorded 256.93 kB.
+  The existing 250 kB warning remains; the 350 kB error budget is unchanged.
+- Local Node 24 comparison bundled the original and revised implementations and
+  alternated seven rounds of 5,000 snapshots after warm-up. Each operation captured
+  50 populated rows, structured-cloned the message, and ran the receiving path.
+  Median round means were 0.052 ms before and 0.062 ms after. Object cloning costs
+  slightly more overall in this microbenchmark; this is not a browser-worker
+  timing guarantee or a claim of improved throughput.
+- Production Headless Chrome at 50 instruments, 1,000 updates/batch, and 50 ms
+  intervals collected 802 snapshots. Receive processing (validation plus facade
+  handling) was p95 0.2 ms, maximum 0.6 ms. Batch completion through a table
+  mutation and two animation frames was p95 62.0 ms, maximum 75.8 ms. This is a
+  rendered-frame proxy, not physical display latency. No long tasks over 50 ms,
+  runtime errors, or CSP violations were observed during the timing sample.
+- At most one snapshot was outstanding. Browser checks passed pause/resume,
+  preservation across navigation while paused, repeated Apply with 10/20/50 rows,
+  and recovery after deliberately blocking the UI for 300 ms. That deliberate
+  stall occurred after the timing sample. Exact slow-receiver accounting and
+  stale-run rejection remain covered by the deterministic integration tests.
+- Switching tabs in this headless session left the document visible, so an actual
+  hidden-tab transition was not verified. Deterministic visibility/watchdog tests
+  passed. Firefox and WebKit were not rerun for this change.
+
+A short maximum-rate page-heap observation, with timing arrays cleared and disabled,
+measured 5,737,740 then 5,827,264 used JS heap bytes after forced GC, 62 seconds
+apart. Backing storage stayed at 327,329 bytes and all 50 rows remained present.
+This limited sample does not establish long-term leak freedom or measure worker
+and Wasm memory; the earlier five-minute binary-transport study is historical.

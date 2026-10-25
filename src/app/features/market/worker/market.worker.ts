@@ -6,8 +6,8 @@ const controller = new WorkerController(
   workerClock,
   workerTimers,
   createWasmFactory(),
-  (event, transfer) => {
-    postMessage(event, transfer);
+  (event) => {
+    postMessage(event);
   },
   () => {
     close();

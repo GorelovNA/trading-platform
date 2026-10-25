@@ -1,9 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { ProducerService } from './producer.service';
-import { CommandType } from '../models/protocol.model';
+import { CommandType, WorkerEventType } from '../models/protocol.model';
 import { PRODUCER_ENVIRONMENT } from './producer-environment';
 import { DEFAULT_SETTINGS } from '../domain/producer-settings.helper';
-import { encodeSnapshot } from '../protocol/snapshot-codec.helper';
 import type { SnapshotMessage } from '../models/protocol.model';
 import { ClientHarness } from '../../../../../tests/support/market-fakes.helper';
 
@@ -18,23 +17,25 @@ function snapshot(
   } = {},
 ): SnapshotMessage {
   const volume = options.volume ?? 10n;
-  return encodeSnapshot(
-    {
-      generatedUpdates: options.updates ?? 1n,
-      metrics: Array.from({ length: options.rows ?? 5 }, (_, instrumentId) => ({
-        instrumentId,
-        lastPriceCents: instrumentId === 0 ? 100 : null,
-        spreadCents: instrumentId === 0 ? 2 : null,
-        imbalance: null,
-        volume: instrumentId === 0 ? volume : 0n,
-        vwap:
-          instrumentId === 0
-            ? { numeratorCents: options.notional ?? volume * 100n, denominator: volume }
-            : null,
-      })),
-    },
-    { runId: options.runId ?? 1, sequence: options.sequence ?? 1, latestBatchEpochMs: 1_000_050 },
-  );
+  return {
+    v: 1,
+    type: WorkerEventType.Snapshot,
+    generatedUpdates: options.updates ?? 1n,
+    metrics: Array.from({ length: options.rows ?? 5 }, (_, instrumentId) => ({
+      instrumentId,
+      lastPriceCents: instrumentId === 0 ? 100 : null,
+      spreadCents: instrumentId === 0 ? 2 : null,
+      imbalance: null,
+      volume: instrumentId === 0 ? volume : 0n,
+      vwap:
+        instrumentId === 0
+          ? { numeratorCents: options.notional ?? volume * 100n, denominator: volume }
+          : null,
+    })),
+    runId: options.runId ?? 1,
+    sequence: options.sequence ?? 1,
+    latestBatchEpochMs: 1_000_050,
+  };
 }
 
 describe('Producer root facade', () => {

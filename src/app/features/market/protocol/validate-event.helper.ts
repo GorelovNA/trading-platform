@@ -7,7 +7,7 @@ import {
   type WorkerEvent,
 } from '../models/protocol.model';
 import { INVALID_PROTOCOL, isProtocolId, isRecord } from './protocol-validation.helper';
-import { parseSnapshot } from './snapshot-codec.helper';
+import { parseSnapshot } from './validate-snapshot.helper';
 
 function isErrorCode(input: unknown): input is ErrorCode {
   return Object.values(ErrorCode).some((code) => code === input);

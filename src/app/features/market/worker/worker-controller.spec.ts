@@ -8,7 +8,6 @@ import {
   type SnapshotMessage,
   type WorkerEvent,
 } from '../models/protocol.model';
-import { decodeSnapshot } from '../protocol/snapshot-codec.helper';
 import { DEFAULT_SETTINGS } from '../domain/producer-settings.helper';
 import { FakeTime, batch } from '../../../../../tests/support/market-fakes.helper';
 import type { Mock } from 'vitest';
@@ -18,7 +17,7 @@ interface WorkerHarness {
   events: WorkerEvent[];
   generators: GeneratorPort[];
   factory: GeneratorFactory;
-  output: Mock<(event: WorkerEvent, transfer: Transferable[]) => void>;
+  output: Mock<(event: WorkerEvent) => void>;
   close: Mock<() => void>;
   controller: WorkerController;
   reset(runId?: number, commandId?: number, interval?: number): void;
@@ -39,9 +38,8 @@ function setup(): WorkerHarness {
       return generator;
     }),
   };
-  const output = vi.fn((event: WorkerEvent, transfer: Transferable[]): void => {
-    events.push(structuredClone(event, { transfer }));
-    if (event.type === WorkerEventType.Snapshot) expect(event.numeric.byteLength).toBe(0);
+  const output = vi.fn((event: WorkerEvent): void => {
+    events.push(structuredClone(event));
   });
   const close = vi.fn();
   const controller = new WorkerController(time, time, factory, output, close);
@@ -94,7 +92,7 @@ function setup(): WorkerHarness {
 }
 
 describe('WorkerController', () => {
-  it('initializes once and waits one interval, transferring an independent cumulative snapshot', async () => {
+  it('initializes once and waits one interval, publishing an independent cumulative snapshot', async () => {
     const h = setup();
     await h.controller.start();
     await h.controller.start();
@@ -115,8 +113,7 @@ describe('WorkerController', () => {
       generatedUpdates: 2n,
       latestBatchEpochMs: 1_000_050,
     });
-    const decoded = decodeSnapshot(snapshot);
-    expect(decoded.ok && decoded.value.metrics[0]).toMatchObject({
+    expect(snapshot?.metrics[0]).toMatchObject({
       volume: 20n,
       vwap: { numeratorCents: 2020n },
     });
@@ -137,7 +134,7 @@ describe('WorkerController', () => {
     expect(h.snapshots()).toHaveLength(2);
     expect(h.snapshots().at(-1)).toMatchObject({
       generatedUpdates: 200n,
-      totals: [{ volume: 2000n }, { volume: 0n }],
+      metrics: [{ volume: 2000n }, { volume: 0n }],
     });
     h.controller.receive({ v: 1, type: 'snapshot-ack', runId: 1, sequence: 1 });
     h.time.advance(50);

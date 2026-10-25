@@ -1,5 +1,10 @@
 # Realtime market dashboard: high-level design
 
+Snapshot transport was simplified on 2026-10-25: ordinary metric objects are
+structured-cloned and validated once on receipt. Backpressure and lifecycle
+guards are unchanged. Earlier milestone evidence describing buffer transfers
+records the previous implementation; see [current validation evidence](production-validation.md#snapshot-transport-simplification).
+
 Status: agreed technology choices; proposed architecture for implementation planning.
 
 Date: 2026-10-25.
@@ -14,19 +19,19 @@ Version one includes the five required metrics, settings validation, pause/resum
 
 ## 2. Accepted technology decisions
 
-| Concern           | Decision                                                                                                   | Reason                                                            |
-| ----------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Frontend          | Existing Angular and TypeScript versions; standalone lazy routes, zoneless change detection, signals       | Fits the repository and keeps rendering explicit                  |
-| Settings form     | Angular Signal Forms                                                                                       | User-selected signal-based form model and validation              |
-| UI                | Semantic HTML and SCSS                                                                                     | Small dependency footprint and accessible initial implementation  |
-| Simulation        | Rust, wasm-bindgen, wasm-pack                                                                              | Typed numeric simulation, explicit ownership, native tests        |
-| Execution         | One application-owned dedicated module worker                                                              | Keeps generation and aggregation away from the UI thread          |
-| Aggregation       | TypeScript inside the worker                                                                               | Easy-to-review formulas and deterministic unit tests              |
-| Numeric precision | Integer cents; bigint cumulative volume and notional                                                       | Exact cumulative arithmetic                                       |
-| Transport         | Packed numeric Wasm batches; snapshot envelopes with transferable buffers; decoded row objects for Angular | Bounded traffic and explicit buffer ownership                     |
-| Scheduling        | Independent generation and snapshot publication                                                            | Every trade counts without requiring a render per batch           |
-| Testing           | Rust unit tests, compiled-Wasm integration tests, Angular/worker tests                                     | Covers algorithms, bindings, lifecycle, and UI behavior           |
-| Deployment        | Cloudflare Pages with Git integration                                                                      | Automatic builds and deployments with configurable static headers |
+| Concern           | Decision                                                                                             | Reason                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Frontend          | Existing Angular and TypeScript versions; standalone lazy routes, zoneless change detection, signals | Fits the repository and keeps rendering explicit                  |
+| Settings form     | Angular Signal Forms                                                                                 | User-selected signal-based form model and validation              |
+| UI                | Semantic HTML and SCSS                                                                               | Small dependency footprint and accessible initial implementation  |
+| Simulation        | Rust, wasm-bindgen, wasm-pack                                                                        | Typed numeric simulation, explicit ownership, native tests        |
+| Execution         | One application-owned dedicated module worker                                                        | Keeps generation and aggregation away from the UI thread          |
+| Aggregation       | TypeScript inside the worker                                                                         | Easy-to-review formulas and deterministic unit tests              |
+| Numeric precision | Integer cents; bigint cumulative volume and notional                                                 | Exact cumulative arithmetic                                       |
+| Transport         | Packed numeric Wasm batches; structured-cloned metric objects for Angular                            | Bounded traffic and one receiving validation pass                 |
+| Scheduling        | Independent generation and snapshot publication                                                      | Every trade counts without requiring a render per batch           |
+| Testing           | Rust unit tests, compiled-Wasm integration tests, Angular/worker tests                               | Covers algorithms, bindings, lifecycle, and UI behavior           |
+| Deployment        | Cloudflare Pages with Git integration                                                                | Automatic builds and deployments with configurable static headers |
 
 Signal Forms is an explicit user-authorized departure from the repository guide's default preference for typed reactive forms. Keep this choice local to the feature; do not silently replace it with reactive forms. Verify APIs against the installed Angular version during the initial integration milestone and document any version-specific limitations. The current Angular documentation describes model signals, schema validation, and field bindings through `@angular/forms/signals` [1].
 
@@ -40,10 +45,10 @@ flowchart LR
     Dashboard[Dashboard route]
     Settings[Settings route / Signal Forms]
     Facade[Application-scoped producer service]
-    Decoder[Snapshot validation and decoding]
+    Validator[Snapshot boundary validation]
     Dashboard --> Facade
     Settings --> Facade
-    Decoder --> Facade
+    Validator --> Facade
   end
   subgraph Worker[Dedicated Web Worker]
     Controller[Lifecycle and scheduling]
@@ -55,8 +60,8 @@ flowchart LR
     Aggregator --> Publisher
   end
   Facade -->|Validated commands| Controller
-  Publisher -->|Snapshot envelope + transferred buffer| Decoder
-  Decoder -->|Acknowledgement| Publisher
+  Publisher -->|Structured-cloned snapshot| Validator
+  Validator -->|Acknowledgement| Publisher
 ```
 
 | Component           | Owns                                                                               | Must not own                               |
@@ -102,7 +107,7 @@ Convert operands to `bigint` before multiplying price by quantity. Never perform
 
 Maintain VWAP as an exact rational value until presentation. A formatting utility performs integer quotient/remainder rounding to currency precision without converting unbounded totals to `number`. Use USD and two decimal currency places for version one, matching the requirements' examples. Round positive currency ties half-up. Display imbalance within [-1, +1], with two decimal places. Book quantities never contribute to trade volume.
 
-## 5. Worker protocol and transferable ownership
+## 5. Worker protocol and snapshot ownership
 
 Use a versioned discriminated message protocol. Validate incoming values as `unknown` on both sides before narrowing. Check message kind, protocol version, identifiers, finite integers, ranges, payload lengths, row counts, and expected buffer layout.
 
@@ -122,11 +127,15 @@ Every run-scoped message carries a run ID. Commands carry a monotonically increa
 There are two distinct data boundaries:
 
 1. **Wasm to worker TypeScript:** packed generated updates remain inside one worker execution context. This is a Wasm binding/memory boundary, not a `postMessage` transfer.
-2. **Worker to main thread:** publish a small snapshot envelope containing metadata, per-instrument `bigint` totals, and an independently allocated transferable `ArrayBuffer` holding bounded numeric display fields. The main-thread adapter decodes this into immutable row objects for Angular.
+2. **Worker to main thread:** publish a snapshot containing metadata and up to 50
+   ordinary metric objects with bigint totals and exact VWAP pairs. Structured
+   cloning provides independent receiver storage. The main-thread boundary
+   validates once and constructs immutable rows for Angular.
 
-Use structured cloning for the envelope and arbitrary-precision totals; do not encode cumulative totals in fixed-width integer buffers or JSON. Transfer only the standalone numeric snapshot buffer. Never transfer Wasm linear memory. Transferring an `ArrayBuffer` detaches it from the sender, so no sender-side code may access it afterward [3].
-
-This hybrid snapshot format deliberately satisfies the selected transferable-buffer approach while retaining convenient Angular objects and exact totals. With only 50 rows, transfer performance is a hypothesis to measure, not a claimed major speedup. Start with fresh small buffers per publication; do not add pooling or shared memory in version one.
+No custom binary snapshot layout, transfer list, encoder, or decoder is needed.
+Wasm linear memory remains entirely inside the worker. Publication still holds
+one outstanding snapshot until its acknowledgement; slow receivers cannot build
+an unbounded queue. Keep bigint values in structured-clone messages, not JSON.
 
 Permit only one unacknowledged data snapshot. While it is outstanding, continue aggregating and mark the latest state as pending instead of queueing more snapshots. Acknowledgements identify both run and sequence. Reset clears the old publication slot; stale acknowledgements cannot release a new run's slot. The receiver acknowledges structurally valid stale snapshots even though it does not apply them.
 
@@ -203,7 +212,7 @@ Commit Rust source, `Cargo.lock`, toolchain pins, npm lockfile, and reproducible
 | Metric unit tests                | Worked example ($102 last, 40 volume, $101.50 VWAP, $0.04 spread, 0.20 imbalance), repeated instruments, isolation, zero denominators, exact bigint totals beyond safe-number range, display-only rounding               |
 | Worker lifecycle tests           | Defaults, Apply while running/paused/loading, repeated Apply, reset, pause/resume with fake clock, no catch-up, stale commands/results, acknowledgements, bounded publication, failures and cleanup                      |
 | Angular tests                    | Signal Forms validation, draft isolation, Apply behavior, unavailable values, lifecycle feedback, navigation preserving the single producer, accessible control behavior                                                 |
-| Browser integration smoke checks | Real worker and production Wasm loading, transferred-buffer ownership, CSP, maximum settings, deep links, deployed asset paths                                                                                           |
+| Browser integration smoke checks | Real worker and production Wasm loading, snapshot isolation, CSP, maximum settings, deep links, deployed asset paths                                                                                                     |
 
 Use the repository's Vitest/jsdom and zoneless Angular testing conventions. jsdom does not establish real browser worker behavior; browser smoke checks are a separate integration activity. Formal end-to-end automation is not required. Use fake timers and deterministic seeds; avoid long real-time waits and chance-based assertions.
 
@@ -213,7 +222,7 @@ During implementation, extend validation to include Rust and compiled-Wasm check
 
 1. **Integration foundation:** pin Rust tooling; load a minimal real Rust/Wasm export inside an Angular module worker; prove production asset loading and Signal Forms compatibility. Establish the reproducible build command.
 2. **Simulation engine:** implement stateful seeded generation and packed batches; complete native Rust and compiled-Wasm tests.
-3. **Metrics and protocol:** implement bigint accumulation, formatting, protocol validation, snapshot encoding/decoding, and transfer ownership tests.
+3. **Metrics and protocol:** implement bigint accumulation, formatting, protocol validation, snapshot boundary validation, and ownership tests.
 4. **Lifecycle and scheduling:** implement the single service/worker, reset, pause/resume, run isolation, independent publication, and failure cleanup with deterministic tests.
 5. **Application pages:** implement dashboard and Signal Forms settings with HTML/SCSS, accessibility, navigation persistence, and Angular tests.
 6. **Quality and performance:** run full validation, inspect the production bundle, verify maximum settings and bounded queues, and resolve measured issues.

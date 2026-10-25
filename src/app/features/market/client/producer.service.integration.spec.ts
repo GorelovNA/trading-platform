@@ -9,7 +9,7 @@ import { DEFAULT_SETTINGS } from '../domain/producer-settings.helper';
 import { ClientHarness, batch } from '../../../../../tests/support/market-fakes.helper';
 
 // Exercise the real controller and facade together with asynchronous transport turns
-// and real transferable detachment; only scheduling and the generator are fake.
+// and real structured cloning; only scheduling and the generator are fake.
 describe('Producer/controller transport integration', () => {
   it('coalesces display messages while preserving exact accounting and serializes resets across a held frame', async () => {
     const h = new ClientHarness();
@@ -31,10 +31,9 @@ describe('Producer/controller transport integration', () => {
         h.time,
         h.time,
         factory,
-        (event, transfer) => {
-          const cloned: unknown = structuredClone(event, { transfer });
+        (event) => {
+          const cloned: unknown = structuredClone(event);
           if (event.type === WorkerEventType.Snapshot) {
-            expect(event.numeric.byteLength).toBe(0);
             outputs();
           }
           deliveries.push(() => {

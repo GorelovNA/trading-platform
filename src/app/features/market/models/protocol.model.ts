@@ -1,3 +1,4 @@
+import type { SnapshotValues } from './market.model';
 import type { ControlAction } from './market.model';
 import type { ErrorCode } from './market.model';
 import type { ProducerSettings } from './producer-settings.model';
@@ -50,21 +51,12 @@ export type Command =
     }
   | { readonly v: 1; readonly type: CommandType.Dispose };
 
-export interface SnapshotTotals {
-  readonly volume: bigint;
-  readonly notionalCents: bigint;
-}
-
-export interface SnapshotMessage {
+export interface SnapshotMessage extends SnapshotValues {
   readonly v: 1;
   readonly type: WorkerEventType.Snapshot;
   readonly runId: number;
   readonly sequence: number;
-  readonly rowCount: number;
-  readonly generatedUpdates: bigint;
   readonly latestBatchEpochMs: number;
-  readonly numeric: ArrayBuffer;
-  readonly totals: readonly SnapshotTotals[];
 }
 
 export type WorkerEvent =

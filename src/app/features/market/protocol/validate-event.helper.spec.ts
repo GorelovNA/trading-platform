@@ -1,5 +1,5 @@
 import { MetricAccumulator } from '../domain/metric-accumulator';
-import { encodeSnapshot } from './snapshot-codec.helper';
+import { WorkerEventType } from '../models/protocol.model';
 import { parseWorkerEvent } from './validate-event.helper';
 
 const ack = {
@@ -19,13 +19,16 @@ describe('worker event parsing', () => {
       ok: true,
       value: { v: 1, type: 'ready' },
     });
-    const snapshot = encodeSnapshot(new MetricAccumulator(5).snapshotValues(), {
+    const snapshot = {
+      v: 1,
+      type: WorkerEventType.Snapshot,
+      ...new MetricAccumulator(5).snapshotValues(),
       runId: 1,
       sequence: 1,
       latestBatchEpochMs: 0,
-    });
+    };
     expect(parseWorkerEvent(snapshot)).toEqual({ ok: true, value: snapshot });
-    expect(parseWorkerEvent({ ...snapshot, rowCount: 6 })).toEqual(invalid);
+    expect(parseWorkerEvent({ ...snapshot, metrics: [] })).toEqual(invalid);
   });
 
   it.each([

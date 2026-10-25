@@ -17,8 +17,7 @@ import {
   type SnapshotMessage,
   type WorkerEvent,
 } from '../models/protocol.model';
-import { decodeSnapshot, validateSnapshotProgress } from '../protocol/snapshot-codec.helper';
-import type { DecodedSnapshot } from '../models/snapshot.model';
+import { validateSnapshotProgress } from '../protocol/validate-snapshot.helper';
 import { parseWorkerEvent } from '../protocol/validate-event.helper';
 import { PRODUCER_ENVIRONMENT } from './producer-environment';
 import type { WorkerPort } from '../models/worker-contracts.model';
@@ -96,8 +95,8 @@ export class ProducerService {
   private ready = false;
   private inFlight: Control | null = null;
   private queuedReset: Reset | null = null;
-  private previous: DecodedSnapshot | null = null;
-  private pending: DecodedSnapshot | null = null;
+  private previous: SnapshotMessage | null = null;
+  private pending: SnapshotMessage | null = null;
   private frame: number | null = null;
   private frameToken = 0;
   private watchdog: number | null = null;
@@ -310,11 +309,9 @@ export class ProducerService {
       this.ackSnapshot(message);
       return;
     }
-    const decoded = decodeSnapshot(message);
     if (
-      !decoded.ok ||
       !validateSnapshotProgress(
-        decoded.value,
+        message,
         { runId: state.runId, instrumentCount: state.requestedSettings.instrumentCount },
         this.previous,
       ) ||
@@ -323,8 +320,8 @@ export class ProducerService {
       this.fail(ErrorCode.InvalidProtocol);
       return;
     }
-    this.previous = decoded.value;
-    this.pending = decoded.value;
+    this.previous = message;
+    this.pending = message;
     if (this.environment.hidden()) {
       this.commitPending();
       return;

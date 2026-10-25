@@ -1,11 +1,11 @@
 import type { Clock, TimerScheduler } from '../models/worker-contracts.model';
 import type { SnapshotValues } from '../models/market.model';
 import type { SnapshotMessage } from '../models/protocol.model';
-import { encodeSnapshot } from '../protocol/snapshot-codec.helper';
+import { WorkerEventType } from '../models/protocol.model';
 
 export const PUBLISH_INTERVAL_MS = 50;
 
-// Keep only a dirty bit while a receiver holds the single transferable slot.
+// Keep only a dirty bit while a receiver holds the single outstanding snapshot.
 export class SnapshotPublisher {
   private outstanding: { readonly runId: number; readonly sequence: number } | null = null;
   private timer: number | null = null;
@@ -85,11 +85,14 @@ export class SnapshotPublisher {
     }
     try {
       const sequence = ++this.sequence;
-      const snapshot = encodeSnapshot(this.capture(), {
+      const snapshot: SnapshotMessage = {
+        v: 1,
+        type: WorkerEventType.Snapshot,
+        ...this.capture(),
         runId: this.runId,
         sequence,
         latestBatchEpochMs: this.latestBatchEpochMs,
-      });
+      };
       this.outstanding = { runId: this.runId, sequence };
       this.dirty = false;
       this.flush = false;
