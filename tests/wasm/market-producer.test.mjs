@@ -20,6 +20,10 @@ const bytes = await readFile(
 );
 const wasm = initSync({ module: bytes });
 
+test('deployment proof: failed checks must block preview publication', () => {
+  assert.fail('Intentional preview-only deployment gate verification; revert after evidence.');
+});
+
 test('the delivered web module initializes with protocol v1', () => {
   assert.equal(protocol_version(), BATCH_PROTOCOL_VERSION);
   assert.equal(protocol_version(), 1);
