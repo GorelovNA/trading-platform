@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.angular/
+.git/
+.husky/_/
+package-lock.json
+# Preserve the supplied requirements verbatim.
+docs/task-description.md

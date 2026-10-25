@@ -1,0 +1,3 @@
+# Project guidance is loaded from AGENTS.md. Do not pin a personal model or
+# override the user's approval, sandbox, network, or credential settings here.
+project_doc_max_bytes = 32768

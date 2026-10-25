@@ -1,0 +1,27 @@
+# Command policy, separate from coding guidance in AGENTS.md.
+# Applies only when this config layer is trusted and loaded by the client.
+# Prefix rules are defense in depth, not a replacement for a sandbox.
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Preserve local work. Use git diff and a targeted patch instead.",
+    match = ["git reset --hard", "git reset --hard HEAD"],
+    not_match = ["git status", "git diff"],
+)
+
+prefix_rule(
+    pattern = ["git", "clean", ["-fd", "-fdx", "-xdf", "-df"]],
+    decision = "forbidden",
+    justification = "Preserve untracked work. Inspect git clean -n and remove explicitly selected generated files instead.",
+    match = ["git clean -fd", "git clean -fdx"],
+    not_match = ["git clean -n"],
+)
+
+prefix_rule(
+    pattern = ["npm", "audit", "fix", "--force"],
+    decision = "forbidden",
+    justification = "Avoid uncontrolled breaking dependency changes. Inspect npm audit and update specific packages with validation.",
+    match = ["npm audit fix --force"],
+    not_match = ["npm audit", "npm audit --omit=dev"],
+)
