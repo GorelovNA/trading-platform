@@ -46,4 +46,6 @@ export interface ProducerViewState {
   readonly pendingAction: ControlAction | null;
   readonly failure: ProducerFailure | null;
   readonly stale: boolean;
+  readonly generatedUpdates: bigint;
+  readonly latestBatchEpochMs: number | null;
 }

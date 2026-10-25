@@ -1,54 +1,31 @@
-import { InjectionToken } from '@angular/core';
+import type { WorkerCallbacks, WorkerPort } from './worker-port';
 
-export interface IntegrationProof {
-  readonly result: Promise<number>;
-  dispose(): void;
-}
-
-export function startIntegrationProof(): IntegrationProof {
-  let worker: Worker | undefined;
-  let cancel: (() => void) | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const result = new Promise<number>((resolve, reject) => {
-    cancel = (): void => {
-      reject(new Error('Worker integration disposed.'));
-    };
-    worker = new Worker(new URL('../worker/market.worker', import.meta.url), { type: 'module' });
-    worker.onmessage = (event: MessageEvent<unknown>): void => {
-      const message = event.data;
-      if (
-        typeof message === 'object' &&
-        message !== null &&
-        'kind' in message &&
-        message.kind === 'ready' &&
-        'version' in message &&
-        message.version === 1
-      ) {
-        resolve(message.version);
-      } else {
-        reject(new Error('Worker integration failed.'));
-      }
-    };
-    worker.onerror = (): void => {
-      reject(new Error('Worker could not start.'));
-    };
-    worker.onmessageerror = (): void => {
-      reject(new Error('Worker message could not be read.'));
-    };
-    timer = setTimeout(() => {
-      reject(new Error('Worker initialization timed out.'));
-    }, 15_000);
+export function createBrowserWorker(callbacks: WorkerCallbacks): WorkerPort {
+  const worker = new Worker(new URL('../worker/market.worker', import.meta.url), {
+    type: 'module',
   });
-  const dispose = (): void => {
-    clearTimeout(timer);
-    worker?.terminate();
-    worker = undefined;
-    cancel?.();
+  const message = (event: MessageEvent<unknown>): void => {
+    callbacks.message(event.data);
   };
-  return { result: result.finally(dispose), dispose };
+  const error = (): void => {
+    callbacks.error();
+  };
+  worker.addEventListener('message', message);
+  worker.addEventListener('error', error);
+  worker.addEventListener('messageerror', error);
+  let terminated = false;
+  return {
+    post(command): void {
+      if (terminated) throw new Error('WORKER_FAILED');
+      worker.postMessage(command);
+    },
+    terminate(): void {
+      if (terminated) return;
+      terminated = true;
+      worker.removeEventListener('message', message);
+      worker.removeEventListener('error', error);
+      worker.removeEventListener('messageerror', error);
+      worker.terminate();
+    },
+  };
 }
-
-export const INTEGRATION_PROOF = new InjectionToken<() => IntegrationProof>('Integration proof', {
-  providedIn: 'root',
-  factory: (): typeof startIntegrationProof => startIntegrationProof,
-});

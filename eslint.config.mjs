@@ -29,7 +29,7 @@ export default defineConfig([
     rules: { eqeqeq: ['error', 'always'], 'no-var': 'error', 'prefer-const': 'error' },
   },
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts', 'tests/support/**/*.ts'],
     extends: [
       eslint.configs.recommended,
       tseslint.configs.strictTypeChecked,

@@ -1,77 +1,57 @@
 import { TestBed } from '@angular/core/testing';
-
 import { Home } from './home';
-import { INTEGRATION_PROOF, type IntegrationProof } from '../market/client/browser-worker';
+import { Producer } from '../market/client/producer';
+import { PRODUCER_ENVIRONMENT } from '../market/client/producer-environment';
+import { ClientHarness } from '../../../../tests/support/market-fakes';
 
-describe('Home', () => {
-  const dispose = vi.fn();
-  let result: Promise<number>;
-
+describe('Home integration placeholder', () => {
+  let h: ClientHarness;
   beforeEach(() => {
-    result = Promise.resolve(1);
+    h = new ClientHarness();
     TestBed.configureTestingModule({
       imports: [Home],
-      providers: [
-        { provide: INTEGRATION_PROOF, useValue: (): IntegrationProof => ({ result, dispose }) },
-      ],
+      providers: [{ provide: PRODUCER_ENVIRONMENT, useValue: h.environment }],
     });
   });
 
-  it('renders an accessible welcome page', async () => {
-    TestBed.configureTestingModule({ imports: [Home] });
+  it('renders the welcome page and reads producer status without starting another producer', async () => {
+    const producer = TestBed.inject(Producer);
+    producer.start();
+    h.worker.ready();
+    h.worker.ack();
     const fixture = TestBed.createComponent(Home);
     await fixture.whenStable();
-
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('main')).not.toBeNull();
     expect(element.querySelector('h1')?.textContent).toBe('Hello, world!');
-    expect(element.textContent).toContain('Trading Platform');
-  });
-
-  it('shows the compiled worker result and disposes on navigation', async () => {
-    const fixture = TestBed.createComponent(Home);
-    await fixture.whenStable();
-    const element: unknown = fixture.nativeElement;
-    if (!(element instanceof HTMLElement)) throw new Error('Missing host');
-    expect(element.textContent).toContain('Worker and Wasm ready (protocol 1).');
+    expect(element.textContent).toContain('Market producer: running.');
     fixture.destroy();
-    expect(dispose).toHaveBeenCalled();
+    expect(h.worker.terminate).not.toHaveBeenCalled();
   });
 
-  it('shows a local error when initialization fails', async () => {
-    result = Promise.reject(new Error('private implementation details'));
+  it('shows a safe local initialization failure', async () => {
+    TestBed.inject(Producer).start();
+    h.worker.message({
+      v: 1,
+      type: 'error',
+      runId: null,
+      commandId: null,
+      code: 'WASM_LOAD_FAILED',
+      detail: 'private',
+    });
     const fixture = TestBed.createComponent(Home);
     await fixture.whenStable();
-    const element: unknown = fixture.nativeElement;
-    if (!(element instanceof HTMLElement)) throw new Error('Missing host');
-    expect(element.textContent).toContain('Reload to retry.');
-    expect(element.textContent).not.toContain('private implementation details');
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('Retry to start a new run.');
+    expect(element.textContent).not.toContain('private');
   });
 
-  it.each([true, false])(
-    'ignores late completion after destruction (success=%s)',
-    async (success) => {
-      let finish: (() => void) | undefined;
-      result = new Promise((resolve, reject) => {
-        finish = (): void => {
-          if (success) resolve(1);
-          else reject(new Error('stale'));
-        };
-      });
-      const fixture = TestBed.createComponent(Home);
-      fixture.destroy();
-      finish?.();
-      await result.catch(() => undefined);
-    },
-  );
-
-  it('validates actual numeric input including blank and fractional values', async () => {
+  it('validates numeric input including blank and fractional values', async () => {
     const fixture = TestBed.createComponent(Home);
     await fixture.whenStable();
-    const element: unknown = fixture.nativeElement;
-    if (!(element instanceof HTMLElement)) throw new Error('Missing host');
+    const element = fixture.nativeElement as HTMLElement;
     const input = element.querySelector('input');
-    if (!input) throw new Error('Missing numeric field');
+    if (input === null) throw new Error('Missing numeric field');
     for (const [value, message] of [
       ['', 'Enter a number.'],
       ['1.5', 'Enter a whole number.'],

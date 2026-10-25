@@ -1,12 +1,22 @@
-import { loadProtocol } from './wasm-generator';
+import { workerClock, workerTimers } from './scheduler';
+import { createWasmFactory } from './wasm-generator';
+import { WorkerController } from './worker-controller';
 
-// One-shot bootstrap proof, replaced by the controller in step 4.
-const controller = new AbortController();
-void loadProtocol(controller.signal).then(
-  (version) => {
-    postMessage({ kind: 'ready', version });
+const controller = new WorkerController(
+  workerClock,
+  workerTimers,
+  createWasmFactory(),
+  (event, transfer) => {
+    postMessage(event, transfer);
   },
   () => {
-    postMessage({ kind: 'error' });
+    close();
   },
 );
+addEventListener('message', (event: MessageEvent<unknown>) => {
+  controller.receive(event.data);
+});
+addEventListener('messageerror', () => {
+  controller.receive(null);
+});
+void controller.start();

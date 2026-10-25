@@ -1,78 +1,59 @@
-import { startIntegrationProof } from './browser-worker';
+import { createBrowserWorker } from './browser-worker';
 
-class MockWorker {
+class MockWorker extends EventTarget {
   static current: MockWorker;
-  onmessage?: (event: MessageEvent<unknown>) => void;
-  onerror?: () => void;
-  onmessageerror?: () => void;
   readonly terminate = vi.fn();
-  constructor() {
+  readonly postMessage = vi.fn();
+  override readonly removeEventListener = vi.fn(super.removeEventListener.bind(this));
+  constructor(
+    readonly url: URL,
+    readonly options: WorkerOptions,
+  ) {
+    super();
     MockWorker.current = this;
   }
 }
 
-describe('browser worker integration', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.stubGlobal('Worker', MockWorker);
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-  });
+describe('Browser worker port', () => {
+  beforeEach(() => vi.stubGlobal('Worker', MockWorker));
+  afterEach(() => vi.unstubAllGlobals());
 
-  it('accepts the expected protocol and terminates exactly once', async () => {
-    const proof = startIntegrationProof();
+  it('constructs a module worker and relays structured messages and both error events', () => {
+    const callbacks = { message: vi.fn(), error: vi.fn() };
+    const port = createBrowserWorker(callbacks);
     const worker = MockWorker.current;
-    worker.onmessage?.(new MessageEvent('message', { data: { kind: 'ready', version: 1 } }));
-    await expect(proof.result).resolves.toBe(1);
-    proof.dispose();
-    expect(worker.terminate).toHaveBeenCalledTimes(1);
-    expect(vi.getTimerCount()).toBe(0);
+    expect(worker.options).toEqual({ type: 'module' });
+    const payload = { v: 1, type: 'ready' };
+    worker.dispatchEvent(new MessageEvent('message', { data: payload }));
+    worker.dispatchEvent(new Event('error'));
+    worker.dispatchEvent(new Event('messageerror'));
+    expect(callbacks.message).toHaveBeenCalledWith(payload);
+    expect(callbacks.error).toHaveBeenCalledTimes(2);
+    port.post({ v: 1, type: 'dispose' });
+    expect(worker.postMessage).toHaveBeenCalledWith({ v: 1, type: 'dispose' });
+    port.terminate();
+    port.terminate();
+    expect(worker.terminate).toHaveBeenCalledOnce();
+    expect(worker.removeEventListener).toHaveBeenCalledTimes(3);
+    worker.dispatchEvent(new MessageEvent('message', { data: null }));
+    worker.dispatchEvent(new Event('error'));
+    expect(callbacks.message).toHaveBeenCalledTimes(1);
+    expect(callbacks.error).toHaveBeenCalledTimes(2);
+    expect(() => {
+      port.post({ v: 1, type: 'dispose' });
+    }).toThrow('WORKER_FAILED');
   });
 
-  it.each([null, 1, {}, { kind: 'error' }, { kind: 'ready' }, { kind: 'ready', version: 2 }])(
-    'rejects invalid responses: %j',
-    async (data) => {
-      const proof = startIntegrationProof();
-      MockWorker.current.onmessage?.(new MessageEvent('message', { data }));
-      await expect(proof.result).rejects.toThrow('integration failed');
-      expect(MockWorker.current.terminate).toHaveBeenCalledOnce();
-    },
-  );
-
-  it.each(['onerror', 'onmessageerror'])('handles %s', async (event) => {
-    const proof = startIntegrationProof();
-    if (event === 'onerror') MockWorker.current.onerror?.();
-    else MockWorker.current.onmessageerror?.();
-    await expect(proof.result).rejects.toThrow();
-    expect(MockWorker.current.terminate).toHaveBeenCalledOnce();
-  });
-
-  it('bounds initialization and cleans up a stuck worker', async () => {
-    const proof = startIntegrationProof();
-    const assertion = expect(proof.result).rejects.toThrow('timed out');
-    await vi.advanceTimersByTimeAsync(15_000);
-    await assertion;
-    expect(MockWorker.current.terminate).toHaveBeenCalledOnce();
-  });
-
-  it('settles the request when disposed before completion', async () => {
-    const proof = startIntegrationProof();
-    proof.dispose();
-    await expect(proof.result).rejects.toThrow('disposed');
-  });
-
-  it('reports browser worker construction failures', async () => {
+  it('propagates construction failure to the facade', () => {
     vi.stubGlobal(
       'Worker',
       class extends MockWorker {
-        constructor() {
-          super();
+        constructor(url: URL, options: WorkerOptions) {
+          super(url, options);
           throw new Error('Unavailable');
         }
       },
     );
-    await expect(startIntegrationProof().result).rejects.toThrow('Unavailable');
+    expect(() => createBrowserWorker({ message: vi.fn(), error: vi.fn() })).toThrow('Unavailable');
   });
 });

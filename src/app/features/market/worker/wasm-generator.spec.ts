@@ -1,4 +1,4 @@
-import { loadProtocol } from './wasm-generator';
+import { createWasmFactory, loadProtocol, WasmGenerator } from './wasm-generator';
 
 describe('Wasm loader', () => {
   const environment = {
@@ -52,5 +52,57 @@ describe('Wasm loader', () => {
     await expect(loadProtocol(new AbortController().signal, environment)).rejects.toThrow(
       'Aborted',
     );
+  });
+});
+
+describe('Wasm generator ownership and factory', () => {
+  it('initializes the module once, passes settings/seed and frees each binding exactly once', async () => {
+    const load = vi.fn().mockResolvedValue(1);
+    const output = new Uint32Array([1, 2, 3]);
+    const binding = { generate_batch: vi.fn().mockReturnValue(output), free: vi.fn() };
+    const construct = vi.fn().mockReturnValue(binding);
+    const factory = createWasmFactory(load, construct);
+    expect(() => factory.create(5, 42)).toThrow('WASM_LOAD_FAILED');
+    const signal = new AbortController().signal;
+    await Promise.all([factory.initialize(signal), factory.initialize(signal)]);
+    expect(load).toHaveBeenCalledOnce();
+    const generator = factory.create(5, 42);
+    expect(construct).toHaveBeenCalledWith(5, 42);
+    expect(generator.generateBatch(3)).toBe(output);
+    expect(binding.generate_batch).toHaveBeenCalledWith(3);
+    generator.dispose();
+    generator.dispose();
+    expect(binding.free).toHaveBeenCalledOnce();
+    expect(() => generator.generateBatch(1)).toThrow('GENERATOR_FAILED');
+  });
+
+  it.each([0, 2])('rejects protocol %s', async (version) => {
+    const factory = createWasmFactory(() => Promise.resolve(version));
+    await expect(factory.initialize(new AbortController().signal)).rejects.toThrow(
+      'WASM_LOAD_FAILED',
+    );
+    expect(() => factory.create(5, 42)).toThrow('WASM_LOAD_FAILED');
+  });
+
+  it('rejects aborted initialization even after a successful module load', async () => {
+    const abort = new AbortController();
+    abort.abort();
+    const factory = createWasmFactory(() => Promise.resolve(1));
+    await expect(factory.initialize(abort.signal)).rejects.toThrow('WASM_LOAD_FAILED');
+  });
+
+  it('does not free twice even if the generated free throws', () => {
+    const binding = {
+      generate_batch: vi.fn(),
+      free: vi.fn(() => {
+        throw new Error('broken');
+      }),
+    };
+    const generator = new WasmGenerator(binding);
+    expect(() => {
+      generator.dispose();
+    }).toThrow('broken');
+    generator.dispose();
+    expect(binding.free).toHaveBeenCalledOnce();
   });
 });

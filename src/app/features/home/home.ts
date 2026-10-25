@@ -1,13 +1,6 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormField, form, required, validate } from '@angular/forms/signals';
-import { INTEGRATION_PROOF } from '../market/client/browser-worker';
+import { Producer } from '../market/client/producer';
 
 @Component({
   selector: 'app-home',
@@ -16,6 +9,7 @@ import { INTEGRATION_PROOF } from '../market/client/browser-worker';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Home {
+  private readonly producer = inject(Producer);
   protected readonly draft = signal<{ count: number | null }>({ count: 5 });
   protected readonly proofForm = form(this.draft, (path) => {
     required(path.count, { message: 'Enter a number.' });
@@ -27,22 +21,7 @@ export class Home {
     });
   });
   protected readonly proofErrors = computed(() => this.proofForm.count().errors());
-  protected readonly status = signal('Loading worker and Wasm…');
-
-  constructor() {
-    const proof = inject(INTEGRATION_PROOF)();
-    let active = true;
-    inject(DestroyRef).onDestroy(() => {
-      active = false;
-      proof.dispose();
-    });
-    void proof.result.then(
-      (version) => {
-        if (active) this.status.set(`Worker and Wasm ready (protocol ${String(version)}).`);
-      },
-      () => {
-        if (active) this.status.set('Worker or Wasm failed to load. Reload to retry.');
-      },
-    );
-  }
+  protected readonly status = computed(
+    () => this.producer.failureMessage() ?? `Market producer: ${this.producer.state().status}.`,
+  );
 }

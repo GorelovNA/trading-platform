@@ -1,9 +1,9 @@
 # Trading Platform
 
-An Angular skeleton with the first three LLD steps complete: the worker/Wasm and
-Signal Forms integration proof, a deterministic Rust market generator, exact
-metrics, and validated snapshot transport. The worker lifecycle and dashboard
-follow in subsequent steps.
+An Angular application with the first five LLD steps complete: deterministic
+Rust/Wasm generation, exact metrics, validated snapshot transport, a bounded
+worker lifecycle, and the root producer facade. The temporary Hello World and
+Signal Forms proof UI remains until the dashboard/settings work in step 6.
 
 ## Requirements and quick start
 
@@ -54,8 +54,9 @@ Karma, browser installation, or Zone.js is needed. Test files are isolated.
 
 - Angular **22.2.3**, CLI/build **22.2.4**, TypeScript **6.0.3**, Vitest **5.0.5**,
   ESLint **10.13.0**, angular-eslint **22.6.0**.
-- Standalone bootstrap and a small router outlet shell. The Home feature loads
-  through a dynamic `loadComponent` import, producing a separate build chunk.
+- Standalone bootstrap and a small router outlet shell that starts the root
+  producer once. The Home feature loads through a dynamic `loadComponent` import,
+  producing a separate build chunk; navigation preserves the producer.
 - Zoneless change detection. OnPush is explicitly configured on existing
   components and as the component schematic default, and ESLint rejects opting
   out. Angular 22 also defaults to OnPush when metadata is omitted.
@@ -238,6 +239,64 @@ with sender detachment. Compiled-Wasm batches also pass the TypeScript batch
 validator. Coverage remains above all 90% thresholds and the production initial
 bundle remains approximately 218 kB. Actual worker publication and browser
 transfer integration follow in step 4; this step does not change the proof UI.
+
+## Worker and root facade (LLD steps 4 and 5)
+
+The worker entry now runs `WorkerController` with injectable clocks/timers, a
+Wasm factory, and `SnapshotPublisher`. Reset creates a new generator/accumulator;
+pause cancels generation and flushes dirty state, and resume waits one interval
+without replaying paused or missed time. All batch generation, validation, and
+aggregation execute in the worker. Wasm bindings are freed exactly once on reset,
+failure, or disposal; late initialization and cancelled callbacks are ignored.
+
+Publication leads immediately after an eligible batch, is capped at one send per
+50 ms during running, and holds one outstanding `(runId, sequence)` slot. A slow
+receiver leaves only a dirty bit and the current accumulators in the worker.
+Matching ACKs release the slot; pause can bypass the throttle for its final dirty
+state. Every generated update is accounted for before publication coalesces it.
+
+`Producer`, provided in root and started by `App`, exposes an immutable readonly
+`state` signal with settings, status, metrics, exact generated-update count, latest
+batch timestamp, pending action, and safe failure information. `failureMessage`
+is computed from allow-listed error codes. `start()` is idempotent; `apply(input)`
+returns domain validation, immediately clears rows for a valid new run, and keeps
+one in-flight control plus the latest queued reset. `pause()`/`resume()` serialize
+controls; `retry()` creates one fresh worker/run using the last requested settings.
+
+The facade validates unknown worker events, rejects retired worker epochs and old
+runs/sequences, and checks cumulative progress only after stale-run rejection.
+Snapshots commit in one animation frame before ACK; hidden documents commit and
+ACK immediately. Initialization and command watchdogs use 15 and 5 seconds,
+suspend when hidden, and receive fresh grace on return. Failure keeps the last
+committed current-run values stale. Application destruction cancels timers/frames,
+removes listeners, and terminates the worker immediately. Routed pages own none
+of these resources; Home now only reads producer status alongside its numeric
+form proof. Dashboard/settings presentation remains step 6.
+
+Validation on 2026-10-25:
+
+- `npm run check` passed: formatting, ESLint, all three TypeScript targets,
+  rustfmt/Clippy, 9 native Rust tests, 5 compiled-Wasm tests, 5 tooling tests,
+  436 Angular/Vitest tests, coverage, and production output verification.
+- Coverage: 97.47% statements, 95.96% branches, 97.58% functions, 97.91% lines.
+  The initial production bundle is 231.22 kB, below the existing 250/350 kB budgets.
+- Deterministic tests cover slow receivers, stale ACKs/timers/frames/worker events,
+  rapid Apply, pause/resume, final flush, hidden tabs, watchdogs, retry, and failure
+  cleanup. A coupled facade/controller test uses actual structured-clone transfer
+  and counts 1,000 updates while sending only two snapshots. Lazy-route tests
+  preserve both running and paused state across component destruction/recreation.
+- Production smoke through `npm run preview` and Playwright CLI, using local
+  Headless Chrome 156: the application reaches running status, same-origin Wasm
+  loads with the correct MIME under CSP, and the real worker transfers snapshots,
+  holds one slot, rejects stale/wrong-run ACKs, flushes on pause, and resets to a
+  fresh sequence/count. With seed 42 and two instruments, 5,000 updates coalesced
+  into two snapshots. Independent compiled-Wasm replay matched row volumes
+  1,242,044 / 1,277,694 and notional cents 12,297,831,631 / 12,995,894,877 exactly.
+  A forced Wasm 404 produced safe failure feedback; reloading after restoring the
+  asset returned to running status. The normal-load console had no errors/warnings.
+- Firefox smoke could not run because its Playwright browser binary is absent.
+  Cross-browser smoke, full UI behavior, and performance/memory measurements remain
+  in steps 6–7; the browser observations above are not latency benchmarks.
 
 ## Dependencies and security
 

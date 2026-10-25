@@ -1,6 +1,6 @@
 # Realtime market dashboard: low-level design and implementation plan
 
-Status: implementation in progress; steps 1–3 are complete. Steps 4–8 remain planned.
+Status: implementation in progress; steps 1–5 are complete. Steps 6–8 remain planned.
 
 Date: 2026-10-25.
 
@@ -661,19 +661,23 @@ Exit: expected worked-example UI values derive from real updates; snapshots pres
 
 ### Step 4 — Worker state machine and bounded publication
 
-- [ ] Implement injectable clock/timers, recursive cadence, tokens, and generation loop.
-- [ ] Implement reset, pause/resume, disposal, safe error messages, and final flush.
-- [ ] Implement 50 ms leading publication and one-slot backpressure.
-- [ ] Test slow receivers, stale ACKs, queued old timers, duplicate controls, and failure cleanup.
+- [x] Implement injectable clock/timers, recursive cadence, tokens, and generation loop.
+- [x] Implement reset, pause/resume, disposal, safe error messages, and final flush.
+- [x] Implement 50 ms leading publication and one-slot backpressure.
+- [x] Test slow receivers, stale ACKs, queued old timers, duplicate controls, and failure cleanup.
+
+Completed together with step 5 on 2026-10-25. The real worker now initializes the Wasm factory once and delegates to an injectable controller and publisher. Fake-clock tests cover recursive cadence without catch-up, generation-token cancellation, final paused flush, exact cumulative accounting under backpressure, stale ACKs, duplicate controls, and failure/disposal cleanup. The production Chrome smoke also verifies actual Wasm generation and transferable snapshots; 5,000 fixed-seed updates match independent compiled-Wasm volume/notional totals exactly. See [README](../../README.md#worker-and-root-facade-lld-steps-4-and-5).
 
 Exit: every generated trade is counted once while snapshots may be coalesced; paused time creates no trades and no catch-up.
 
 ### Step 5 — Root facade and navigation lifecycle
 
-- [ ] Implement real worker port, one in-flight command/latest queued reset, and epoch/run/sequence checks.
-- [ ] Implement readonly signals, optimistic Apply clearing, frame commit, visibility behavior, watchdogs, and retry.
-- [ ] Start once from shell; preserve producer across lazy routes; destroy resources with application lifetime.
-- [ ] Test rapid Apply, old worker responses, old queued frames, hidden tabs, and navigation.
+- [x] Implement real worker port, one in-flight command/latest queued reset, and epoch/run/sequence checks.
+- [x] Implement readonly signals, optimistic Apply clearing, frame commit, visibility behavior, watchdogs, and retry.
+- [x] Start once from shell; preserve producer across lazy routes; destroy resources with application lifetime.
+- [x] Test rapid Apply, old worker responses, old queued frames, hidden tabs, and navigation.
+
+Completed together with step 4 on 2026-10-25. The root `Producer` starts from the application shell; the temporary Home proof only reads its status. Tests prove bounded reset queuing, obsolete control acknowledgements releasing transport slots, frame/run/worker rejection, hidden-tab commits and watchdog grace periods, failure/retry, and application cleanup. Lazy-route tests preserve both running and paused state; a coupled facade/controller test uses real structured-clone transfers and accounts for 1,000 updates while sending only two snapshots. `npm run check` passed with 436 Angular/Vitest tests, existing native/Wasm/tooling tests, all coverage thresholds, and a 231.22 kB production initial bundle. The dashboard/settings UI remains step 6. Firefox is not installed locally; broader browser/performance verification remains step 7.
 
 Exit: no old result can overwrite a new run, no navigation creates a producer, and queues remain bounded under rapid user actions.
 
