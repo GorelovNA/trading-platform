@@ -52,6 +52,10 @@ export default defineConfig([
       '@angular-eslint/prefer-inject': 'error',
       '@angular-eslint/prefer-signals': 'error',
       '@angular-eslint/no-uncalled-signals': 'error',
+      '@angular-eslint/use-lifecycle-interface': 'error',
+      '@angular-eslint/prefer-host-metadata-property': 'error',
+      '@angular-eslint/no-input-prefix': 'error',
+      '@angular-eslint/no-output-on-prefix': 'error',
       '@angular-eslint/component-selector': [
         'error',
         { type: 'element', prefix: 'app', style: 'kebab-case' },
@@ -74,8 +78,10 @@ export default defineConfig([
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {
       '@angular-eslint/template/prefer-control-flow': 'error',
+      '@angular-eslint/template/prefer-class-binding': 'error',
       '@angular-eslint/template/no-any': 'error',
       '@angular-eslint/template/no-call-expression': 'error',
+      '@angular-eslint/template/no-inline-styles': 'error',
     },
   },
   prettier,

@@ -45,6 +45,15 @@ Strict compiler, lint, coverage, and budget settings are executable requirements
 their configuration files own exact values. Prettier owns formatting and ESLint
 owns correctness. Keep their configurations compatible.
 
+Follow the [official Angular style guide](https://angular.dev/style-guide) for
+Angular code and the applicable guidance in
+`docs/agent-guides/development.md`. Use hyphenated filenames matching the main
+identifier, co-locate a component's TypeScript/template/styles and its tests,
+organize by feature or domain, and avoid folders named only for code type such as
+`components/`, `services/`, or `directives/`. Keep the Prettier profile
+authoritative for formatting; add correctness and Angular convention checks to
+ESLint rather than duplicating formatter rules.
+
 Shared instructions live here and in the conditional guides. Runtime policy,
 permissions, hooks, and discovery adapters remain separate. Do not load all
 references or skills at startup.

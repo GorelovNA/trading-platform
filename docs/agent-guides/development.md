@@ -2,6 +2,22 @@
 
 ## Angular and performance
 
+- Follow the [official Angular style guide](https://angular.dev/style-guide).
+  Use hyphenated filenames that match the primary identifier (`user-profile.ts`,
+  `user-profile.html`, `user-profile.scss`, and `user-profile.spec.ts`). Keep a
+  component's files and tests together. Organize under feature areas and domain
+  concepts; avoid generic type folders such as `components/`, `services/`, and
+  `directives/`. Add a shared area only for genuinely cross-feature UI or logic.
+- Prefer one primary concept per file. In component/directive classes, keep
+  injected dependencies, inputs, outputs, and queries before methods; use
+  `protected` for members used only by the template and `readonly` for Angular
+  initialized inputs, outputs, models, and queries. Keep lifecycle hooks small,
+  implement their Angular interfaces, use host metadata, and name event handlers
+  for their action.
+- Prefer native `[class]` bindings over `NgClass`; use `[style]` over `NgStyle`
+  when the applicable content security policy permits inline style properties.
+  Use Angular's control flow and keep complex template expressions in computed
+  state or named class members.
 - Use standalone components, directives, and pipes. Do not introduce NgModules.
   Standalone and OnPush are Angular 22 defaults; explicit OnPush metadata is also
   allowed. Never opt into Eager/Default change detection.

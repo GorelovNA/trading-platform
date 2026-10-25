@@ -6,6 +6,10 @@
 `docs/agent-guides/` own development, security, and testing details; consult only
 those selected by the task. There are no nested instruction files.
 `README.md` describes development commands; `package.json` defines them.
+Angular implementation guidance belongs in `docs/agent-guides/development.md`.
+That guide follows the official Angular style guide and describes how the
+repo-specific feature/domain structure applies it. ESLint enforces checkable
+Angular correctness conventions; Prettier remains the sole formatting authority.
 
 The root `CLAUDE.md` imports only `AGENTS.md`. Codex and Kiro use native AGENTS
 support where available. Do not assume nested instructions load lazily across
