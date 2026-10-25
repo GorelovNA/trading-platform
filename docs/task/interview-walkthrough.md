@@ -63,6 +63,14 @@ settings, real market feed, or chart is needed for the task.
 
 ## Small-change rehearsal
 
+The step 8 delivery exercised a real tooling change: fix hosted deep links by
+changing the explicit rewrite targets, update the artifact verifier and local
+preview server, run the full gate, commit/push, observe the automatic production
+build, then check direct URLs in HTTP and a fresh browser navigation. The
+deployment IDs and results are recorded in [deployment.md](deployment.md).
+Practice narrating this sequence and its provider-specific cause during the
+interview.
+
 Suggested local exercise: adjust the positive imbalance display from two to three
 decimal places in `domain/price-format.helper.ts`. Before editing, inspect the
 function and its tests, describe the expected positive/negative/rounded-zero/null

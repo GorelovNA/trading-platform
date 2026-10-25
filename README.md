@@ -5,9 +5,8 @@ runs in a dedicated worker, keeping trade generation and metric aggregation off 
 UI thread.
 
 Repository: [GorelovNA/trading-platform](https://github.com/GorelovNA/trading-platform).
-The repository is currently private. Cloudflare Pages project: `trading-platform`.
-Assigned demo hostname: `trading-platform-8bq.pages.dev`; first deployment and
-public access verification are pending.
+Live demo: [Trading Platform](https://trading-platform-8bq.pages.dev).
+Both the repository and demo are publicly accessible without owner credentials.
 
 - **Dashboard** (`/dashboard`): live prices, spread, cumulative volume, VWAP, and
   order-book imbalance for simulated instruments.
@@ -150,9 +149,9 @@ and a small-change rehearsal.
   `application/wasm` MIME type, CSP response headers, and hashed worker/binary
   paths. Missing assets must return 404. Retry recreates the worker; an old tab
   after a deployment may need a reload to fetch current assets.
-- **Interviewer cannot open the repository:** a private repository requires an
-  accepted collaborator invitation. Test the demo separately in a signed-out
-  browser; owner access does not establish interviewer access.
+- **Interviewer cannot open the repository:** verify that GitHub visibility is
+  still public. If it becomes private, collaborators need accepted invitations.
+  Test the demo separately in a signed-out browser.
 
 ## Further reading
 

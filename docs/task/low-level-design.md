@@ -5,7 +5,7 @@ structured-cloned and validated once on receipt. Backpressure and lifecycle
 guards are unchanged. Earlier milestone evidence describing buffer transfers
 records the previous implementation; see [current validation evidence](production-validation.md#snapshot-transport-simplification).
 
-Status: local implementation and validation complete through step 7, with browser availability limitations recorded below. Step 8 is in progress: deployment tooling and submission guides are prepared; live hosting, push-trigger, and interviewer-access verification remain pending.
+Status: implementation, validation, and step 8 deployment/submission preparation complete. Public repository/demo access, production and preview Git builds, failed-check publication blocking, and deployed routing/worker/UI behavior are verified. Browser availability limitations remain recorded below; the interview walkthrough is ready for candidate practice.
 
 Date: 2026-10-25.
 
@@ -709,17 +709,23 @@ Exit: quality checks pass; measured results and any platform limitations are rec
 
 ### Step 8 — Authorized deployment and submission
 
-Deployment preparation is tracked in [deployment.md](deployment.md), with an
-[architecture walkthrough and rehearsal](interview-walkthrough.md). Pending live
-checks remain unchecked below; local preparation does not establish publication.
+Deployment evidence is recorded in [deployment.md](deployment.md), with an
+[architecture walkthrough and rehearsal](interview-walkthrough.md). The public
+demo is [Trading Platform](https://trading-platform-8bq.pages.dev); the repository
+is [GorelovNA/trading-platform](https://github.com/GorelovNA/trading-platform).
 
-- [ ] Use existing GitHub repository, and configure Cloudflare Git integration when authorized. Include Angular code, Rust/Wasm source, tests, lockfiles, and README; preserve development history when commits are authorized (encouraged by the source, not mandatory).
-- [ ] Add build command, pinned tool provisioning, output directory, headers, explicit route rewrites, and preview/production branch configuration.
-- [ ] Verify every branch push triggers a build with no branch/path exclusions: successful production builds update the submitted demo and successful other-branch builds publish previews; failed checks prevent publication.
-- [ ] Verify deployed worker/Wasm loading, CSP, pause/reset/navigation, and direct page links.
-- [ ] Update README with exact setup/build/test commands, architecture summary, troubleshooting, and repository/demo links.
-- [ ] Verify repository access for the interviewers and open the live demo without owner credentials; grant repository access explicitly if it remains private.
-- [ ] Prepare an architecture walkthrough covering Rust generation, the worker boundary, metric formulas, exact arithmetic, lifecycle races, tests, and performance/security tradeoffs. Rehearse a small code change, its tests, and the authorized push-to-demo workflow so the implementation can be explained and modified during the interview.
+- [x] Use existing GitHub repository, and configure Cloudflare Git integration when authorized. Include Angular code, Rust/Wasm source, tests, lockfiles, and README; preserve development history when commits are authorized (encouraged by the source, not mandatory).
+- [x] Add build command, pinned tool provisioning, output directory, headers, explicit route rewrites, and preview/production branch configuration.
+- [x] Verify every branch push triggers a build with no branch/path exclusions: successful production builds update the submitted demo and successful other-branch builds publish previews; failed checks prevent publication.
+- [x] Verify deployed worker/Wasm loading, CSP, pause/reset/navigation, and direct page links.
+- [x] Update README with exact setup/build/test commands, architecture summary, troubleshooting, and repository/demo links.
+- [x] Verify repository access for the interviewers and open the live demo without owner credentials; grant repository access explicitly if it remains private.
+- [x] Prepare an architecture walkthrough covering Rust generation, the worker boundary, metric formulas, exact arithmetic, lifecycle races, tests, and performance/security tradeoffs. Rehearse a small code change, its tests, and the authorized push-to-demo workflow so the implementation can be explained and modified during the interview.
+
+Completed 2026-10-25 after explicit commit/push authorization. The user made the
+repository public, and unauthenticated repository/demo access was verified. The
+hosted deep-link correction provided a real small-change/test/deployment rehearsal;
+candidate interview practice remains a human preparation activity.
 
 Exit: interviewers can open the repository/demo and see authorized pushed changes without manual deployment steps.
 

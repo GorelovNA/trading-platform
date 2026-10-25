@@ -3,20 +3,55 @@
 ## Current state
 
 Prepared locally on 2026-10-25. Repository:
-[GorelovNA/trading-platform](https://github.com/GorelovNA/trading-platform), private;
+[GorelovNA/trading-platform](https://github.com/GorelovNA/trading-platform), public;
 production branch `main`. Git-connected Pages project `trading-platform` was
 created through the Cloudflare API on the user's authenticated account. Cloudflare
-assigned `trading-platform-8bq.pages.dev`; no deployment has been verified yet.
-Interviewer GitHub usernames remain required to verify private-repository access.
+assigned [trading-platform-8bq.pages.dev](https://trading-platform-8bq.pages.dev).
+The user made the repository public; an unauthenticated GitHub request returned
+200 with the repository title. The production demo also opens without credentials.
 
 The local `npm run check` passed: 402 Angular tests, 9 native Rust tests, 5 compiled
 Wasm tests, and 5 tooling tests; coverage and the production verifier passed.
 The existing 250 kB initial-bundle warning remains (256.56 kB; the error budget
-passes). Bash syntax validation also passed. The Linux provisioner requires its
-first Cloudflare build for live validation.
+passes). Bash syntax validation also passed. The first Cloudflare production and
+preview builds successfully ran the Linux provisioner and the full quality gate.
 
 Local production evidence is in [production-validation.md](production-validation.md).
 It establishes local behavior, not deployed behavior or hosting configuration.
+
+## Live evidence
+
+- Initial production commit `1637283`, deployment
+  `bf151678-0203-4c3f-a493-4727ac85fc6d`: successful Git-triggered build and
+  publication. Preview branch `codex/deployment-preview` at the same commit also
+  published successfully as `b2a439a4-0413-45f9-b908-6f74b54b0381`.
+- Signed-out Headless Chrome verified five updating rows, pause/resume, unchanged
+  paused metrics across navigation, maximum settings (50 / 1,000 / 50), Apply from
+  paused state, and forced Wasm load failure followed by successful Retry.
+  No runtime errors or CSP violations occurred before intentional fault injection.
+- The hashed worker and Wasm requests returned 200 from the demo origin.
+  Direct HTTP checks confirmed `application/javascript` and `application/wasm`,
+  the restrictive CSP, `nosniff`, referrer and permissions policies. HTTPS works;
+  no HSTS header was returned on the selected `pages.dev` hostname.
+- The first hosted routing check found Pages canonicalizing `/index.html` into
+  a redirect to `/` and rejecting trailing-slash rewrite rules as loops. Commit
+  `d6329e4` changes the four explicit rewrite targets to canonical `/` and updates
+  the artifact verifier/local preview server. Its local full gate passed, and
+  production deployment `f5eb699b-b6a6-442e-bcd9-c8806ed6e7bb` succeeded. Direct
+  requests to `/`, `/dashboard`, `/dashboard/`, `/settings`, and `/settings/`
+  return 200 without HTTP redirects. Missing Wasm/JavaScript and unknown direct
+  routes return 404. A fresh browser navigation to `/settings/` renders Settings.
+- Preview-only commit `46ce4bd` deliberately failed one compiled-Wasm assertion.
+  Deployment `ea0d6387-612b-4cd3-a816-23eab40541ec` ended at the build stage with
+  exit code 1, with no publication. The production canonical deployment remained
+  `f5eb699b-b6a6-442e-bcd9-c8806ed6e7bb`; the successful preview alias still
+  referenced the prior published preview. Restoration commit `a6b58d5` removes
+  the assertion and was pushed to the preview branch. The intentional failure
+  never existed on `main`; no check or hook was disabled.
+- The deployed deep-link fix exercised the small-change/test/push-to-demo
+  workflow. The [interview walkthrough](interview-walkthrough.md) is ready for
+  the candidate to practice explaining. Firefox/WebKit and actual hidden-tab
+  behavior retain the limitations recorded in the local validation document.
 
 ## Connect the project
 
@@ -56,14 +91,14 @@ manifest, toolchain file, locks, and documentation aligned.
 Record the commit SHA, deployment ID/URL, branch, build result, and observations
 for each check. Pending items below are not claimed as passing.
 
-| Check             | Required evidence                                                                   | State   |
-| ----------------- | ----------------------------------------------------------------------------------- | ------- |
-| Production push   | A push to `main` starts the full gate and updates the stable demo URL               | Pending |
-| Preview push      | A push to another branch starts the same gate and publishes its preview             | Pending |
-| Path coverage     | Includes all paths; excludes none; no branch exclusions                             | Pending |
-| Failed check      | A failed build publishes nothing and leaves the prior production deployment current | Pending |
-| Signed-out access | Demo opens without owner credentials or Cloudflare Access                           | Pending |
-| Repository access | Interviewers can open source/tests/README with their own accounts                   | Pending |
+| Check             | Required evidence                                                                   | State  |
+| ----------------- | ----------------------------------------------------------------------------------- | ------ |
+| Production push   | A push to `main` starts the full gate and updates the stable demo URL               | Passed |
+| Preview push      | A push to another branch starts the same gate and publishes its preview             | Passed |
+| Path coverage     | Includes all paths; excludes none; no branch exclusions                             | Passed |
+| Failed check      | A failed build publishes nothing and leaves the prior production deployment current | Passed |
+| Signed-out access | Demo opens without owner credentials or Cloudflare Access                           | Passed |
+| Repository access | Public source/tests/README open without authentication                              | Passed |
 
 Use a small intended change for production/preview evidence. If demonstrating a
 failed check, use a disposable preview branch with an intentional check failure;
@@ -85,10 +120,10 @@ On the actual production URL, verify:
 - Load failure gives actionable feedback and Retry recovers. Run the maximum
   settings and confirm navigation and controls remain usable.
 
-Verify repository access with the actual interviewer identities. Keep it private
-unless the user explicitly requests a visibility change; collaborator invites
-need the intended GitHub usernames and must be accepted. A public demo can be
-served from a private repository.
+The repository is public at handoff, so interviewer invitations are unnecessary.
+If visibility later becomes private, verify access with the actual interviewer
+identities; collaborator invitations must be accepted. Demo access is independent
+of repository visibility.
 
 ## Push-to-demo workflow
 
