@@ -569,7 +569,7 @@ All worker messages, generator output, and form input are validated. Errors map 
 
 ### 10.2 Routing and deployment
 
-Use a top-level static `404.html` to prevent Cloudflare's catch-all SPA fallback from turning missing binaries into successful HTML responses [4]. Add explicit `_redirects` rewrites for `/dashboard` and `/settings` (and normalized trailing-slash variants if needed) to `/index.html` with status 200. `/` serves the index normally. Unknown direct URLs return 404; unknown Angular client-side routes redirect to the dashboard. No `/* /index.html 200` catch-all.
+Use a top-level static `404.html` to prevent Cloudflare's catch-all SPA fallback from turning missing binaries into successful HTML responses [4]. Add explicit `_redirects` rewrites for `/dashboard` and `/settings` and their trailing-slash variants to `/` with status 200. Target the canonical root because deployed Pages normalizes `/index.html` into an external redirect, losing the requested Angular route. `/` serves the index normally. Unknown direct URLs return 404; unknown Angular client-side routes redirect to the dashboard. No catch-all rewrite.
 
 Use Angular production hashing for worker/app/Wasm output; verify binary hashing from the loader. Keep HTML revalidated, and do not configure immutable caching for unhashed HTML or configuration files. A tab from a prior deployment may fail a future lazy asset load if that asset has been removed; show actionable reload feedback instead of pretending atomic deployment preserves every older client forever.
 

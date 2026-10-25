@@ -1,4 +1,4 @@
-/dashboard /index.html 200
-/dashboard/ /index.html 200
-/settings /index.html 200
-/settings/ /index.html 200
+/dashboard / 200
+/dashboard/ / 200
+/settings / 200
+/settings/ / 200

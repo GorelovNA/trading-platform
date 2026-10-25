@@ -55,12 +55,7 @@ const redirects = (await readFile(new URL('_redirects', directory), 'utf8'))
   .map((line) => line.trim());
 assert.deepEqual(
   redirects,
-  [
-    '/dashboard /index.html 200',
-    '/dashboard/ /index.html 200',
-    '/settings /index.html 200',
-    '/settings/ /index.html 200',
-  ],
+  ['/dashboard / 200', '/dashboard/ / 200', '/settings / 200', '/settings/ / 200'],
   'Only product routes may rewrite to the application.',
 );
 assert.ok(files.includes('404.html'), 'A static 404 must prevent missing-asset SPA fallback.');

@@ -28,8 +28,8 @@ const routes = new Map(
     .trim()
     .split('\n')
     .map((line) => line.trim().split(/\s+/u))
-    .filter(([, target, status]) => target === '/index.html' && status === '200')
-    .map(([path, target]) => [path, target]),
+    .filter(([, target, status]) => target === '/' && status === '200')
+    .map(([path]) => [path, '/index.html']),
 );
 createServer(async (request, response) => {
   try {
