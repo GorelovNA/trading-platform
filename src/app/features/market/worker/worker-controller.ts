@@ -1,17 +1,24 @@
-import type { ErrorCode } from '../domain/market-models';
+import { ControlAction, ErrorCode } from '../models/market.model';
 import { MetricAccumulator } from '../domain/metric-accumulator';
-import type { ProducerSettings } from '../domain/producer-settings';
-import type { Clock, TimerScheduler } from '../domain/scheduling';
-import type { Command, WorkerEvent } from '../protocol/messages';
-import { parseCommand } from '../protocol/validate-command';
-import type { GeneratorFactory, GeneratorPort } from './generator-port';
+import type { ProducerSettings } from '../models/producer-settings.model';
+import type { Clock, TimerScheduler } from '../models/worker-contracts.model';
+import {
+  CommandOutcome,
+  CommandType,
+  WorkerEventType,
+  WorkerStatus,
+  type Command,
+  type WorkerEvent,
+} from '../models/protocol.model';
+import { parseCommand } from '../protocol/validate-command.helper';
+import type { GeneratorFactory, GeneratorPort } from '../models/worker-contracts.model';
 import { SnapshotPublisher } from './snapshot-publisher';
 
-type Phase = 'loading' | 'idle' | 'running' | 'paused' | 'failed' | 'disposed';
+import { WorkerPhase } from '../models/worker-contracts.model';
 type Control = Extract<Command, { readonly commandId: number }>;
 
 export class WorkerController {
-  private phase: Phase = 'loading';
+  private phase: WorkerPhase = WorkerPhase.Loading;
   private started = false;
   private readonly abort = new AbortController();
   private readonly publisher: SnapshotPublisher;
@@ -34,61 +41,66 @@ export class WorkerController {
       clock,
       timers,
       () => {
-        if (this.accumulator === null) throw new Error('INVALID_PROTOCOL');
+        if (this.accumulator === null) throw new Error(ErrorCode.InvalidProtocol);
         return this.accumulator.snapshotValues();
       },
       (snapshot) => {
         this.emit(snapshot, [snapshot.numeric]);
       },
       () => {
-        this.fail('INVALID_PROTOCOL');
+        this.fail(ErrorCode.InvalidProtocol);
       },
     );
   }
 
   async start(): Promise<void> {
-    if (this.started || this.phase !== 'loading') return;
+    if (this.started || this.phase !== WorkerPhase.Loading) return;
     this.started = true;
     try {
       await this.factory.initialize(this.abort.signal);
       if (this.abort.signal.aborted) return;
-      this.phase = 'idle';
-      this.emit({ v: 1, type: 'ready' });
+      this.phase = WorkerPhase.Idle;
+      this.emit({ v: 1, type: WorkerEventType.Ready });
     } catch {
-      this.fail('WASM_LOAD_FAILED');
+      this.fail(ErrorCode.WasmLoadFailed);
     }
   }
 
   receive(input: unknown): void {
-    if (this.phase === 'disposed') return;
+    if (this.phase === WorkerPhase.Disposed) return;
     const parsed = parseCommand(input);
     if (!parsed.ok) {
-      this.fail('INVALID_PROTOCOL');
+      this.fail(ErrorCode.InvalidProtocol);
       return;
     }
     const command = parsed.value;
-    if (command.type === 'dispose') {
+    if (command.type === CommandType.Dispose) {
       this.dispose();
       return;
     }
-    if (this.phase === 'failed') return;
-    if (command.type === 'snapshot-ack') {
+    if (this.phase === WorkerPhase.Failed) return;
+    if (command.type === CommandType.SnapshotAck) {
       this.publisher.acknowledge(command.runId, command.sequence);
       return;
     }
-    if (this.phase === 'loading' || (this.phase === 'idle' && command.type !== 'reset')) {
-      this.fail('INVALID_PROTOCOL', command.commandId);
+    if (
+      this.phase === WorkerPhase.Loading ||
+      (this.phase === WorkerPhase.Idle && command.type !== CommandType.Reset)
+    ) {
+      this.fail(ErrorCode.InvalidProtocol, command.commandId);
       return;
     }
     const obsolete =
       command.commandId <= this.commandId ||
-      (command.type === 'reset' ? command.runId <= this.runId : command.runId !== this.runId);
+      (command.type === CommandType.Reset
+        ? command.runId <= this.runId
+        : command.runId !== this.runId);
     this.commandId = Math.max(this.commandId, command.commandId);
     if (obsolete) {
-      this.acknowledge(command, 'ignored');
+      this.acknowledge(command, CommandOutcome.Ignored);
       return;
     }
-    if (command.type === 'reset') {
+    if (command.type === CommandType.Reset) {
       this.cancelGeneration();
       this.publisher.reset(command.runId);
       this.runId = command.runId;
@@ -97,26 +109,26 @@ export class WorkerController {
         this.generator = this.factory.create(command.settings.instrumentCount, command.seed);
         this.accumulator = new MetricAccumulator(command.settings.instrumentCount);
         this.settings = command.settings;
-        this.phase = 'running';
+        this.phase = WorkerPhase.Running;
         this.schedule(this.clock.now() + command.settings.batchIntervalMs);
       } catch {
-        this.fail('GENERATOR_FAILED', command.commandId);
+        this.fail(ErrorCode.GeneratorFailed, command.commandId);
         return;
       }
-    } else if (command.type === 'pause' && this.phase === 'running') {
+    } else if (command.type === CommandType.Pause && this.phase === WorkerPhase.Running) {
       this.cancelGeneration();
-      this.phase = 'paused';
+      this.phase = WorkerPhase.Paused;
       this.publisher.flushFinal();
-    } else if (command.type === 'resume' && this.phase === 'paused') {
-      this.phase = 'running';
+    } else if (command.type === CommandType.Resume && this.phase === WorkerPhase.Paused) {
+      this.phase = WorkerPhase.Running;
       this.schedule(this.clock.now() + (this.settings?.batchIntervalMs ?? 0));
     }
-    this.acknowledge(command, 'applied');
+    this.acknowledge(command, CommandOutcome.Applied);
   }
 
   dispose(): void {
-    if (this.phase === 'disposed') return;
-    this.phase = 'disposed';
+    if (this.phase === WorkerPhase.Disposed) return;
+    this.phase = WorkerPhase.Disposed;
     this.abort.abort();
     this.cancelGeneration();
     this.publisher.stop();
@@ -129,16 +141,21 @@ export class WorkerController {
     this.close();
   }
 
-  private acknowledge(command: Control, outcome: 'applied' | 'ignored'): void {
-    if (this.phase !== 'running' && this.phase !== 'paused') return;
+  private acknowledge(command: Control, outcome: CommandOutcome): void {
+    if (this.phase !== WorkerPhase.Running && this.phase !== WorkerPhase.Paused) return;
     this.emit({
       v: 1,
-      type: 'command-ack',
+      type: WorkerEventType.CommandAck,
       commandId: command.commandId,
       runId: command.runId,
-      action: command.type,
+      action:
+        command.type === CommandType.Reset
+          ? ControlAction.Reset
+          : command.type === CommandType.Pause
+            ? ControlAction.Pause
+            : ControlAction.Resume,
       outcome,
-      status: this.phase,
+      status: this.phase === WorkerPhase.Running ? WorkerStatus.Running : WorkerStatus.Paused,
     });
   }
 
@@ -149,10 +166,10 @@ export class WorkerController {
   }
 
   private schedule(deadline: number): void {
-    if (this.phase !== 'running') return;
+    if (this.phase !== WorkerPhase.Running) return;
     const token = this.generationToken;
     this.timer = this.timers.schedule(Math.max(0, deadline - this.clock.now()), () => {
-      if (token !== this.generationToken || this.phase !== 'running') return;
+      if (token !== this.generationToken || this.phase !== WorkerPhase.Running) return;
       this.timer = null;
       this.generate(deadline);
     });
@@ -160,20 +177,20 @@ export class WorkerController {
 
   private generate(deadline: number): void {
     if (this.generator === null || this.settings === null || this.accumulator === null) {
-      this.fail('INVALID_PROTOCOL');
+      this.fail(ErrorCode.InvalidProtocol);
       return;
     }
     let batch: Uint32Array;
     try {
       batch = this.generator.generateBatch(this.settings.updatesPerBatch);
     } catch {
-      this.fail('GENERATOR_FAILED');
+      this.fail(ErrorCode.GeneratorFailed);
       return;
     }
     try {
       this.accumulator.applyValidatedBatch(batch, this.settings.updatesPerBatch);
     } catch {
-      this.fail('INVALID_BATCH');
+      this.fail(ErrorCode.InvalidBatch);
       return;
     }
     this.publisher.markDirty(this.clock.epochNow());
@@ -192,13 +209,13 @@ export class WorkerController {
     try {
       this.output(event, transfer);
     } catch {
-      this.fail('WORKER_FAILED');
+      this.fail(ErrorCode.WorkerFailed);
     }
   }
 
   private fail(code: ErrorCode, commandId: number | null = null): void {
-    if (this.phase === 'failed' || this.phase === 'disposed') return;
-    this.phase = 'failed';
+    if (this.phase === WorkerPhase.Failed || this.phase === WorkerPhase.Disposed) return;
+    this.phase = WorkerPhase.Failed;
     this.abort.abort();
     this.cancelGeneration();
     this.publisher.stop();
@@ -208,6 +225,6 @@ export class WorkerController {
       // Preserve the original allow-listed failure and retire the broken generator.
     }
     this.accumulator = null;
-    this.emit({ v: 1, type: 'error', runId: this.runId || null, commandId, code });
+    this.emit({ v: 1, type: WorkerEventType.Error, runId: this.runId || null, commandId, code });
   }
 }

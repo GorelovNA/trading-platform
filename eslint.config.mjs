@@ -6,6 +6,70 @@ import rxjs from 'eslint-plugin-rxjs-x';
 import prettier from 'eslint-config-prettier/flat';
 import globals from 'globals';
 
+const repositoryNaming = {
+  meta: {
+    type: 'suggestion',
+    docs: { description: 'Enforce role-based Angular and model filenames' },
+    schema: [],
+    messages: {
+      componentClass: 'Angular component classes must end in Component.',
+      componentFile: 'Angular component files must use the .component.ts suffix.',
+      serviceClass: 'Angular injectable classes must end in Service.',
+      serviceFile: 'Angular injectable files must use the .service.ts suffix.',
+      helperFile: 'Files with exported helper functions must use the .helper.ts suffix.',
+      modelFile: 'Exported interfaces and type aliases belong in a models/*.model.ts file.',
+      simpleUnion: 'Use a string enum for a named finite set of string values.',
+    },
+  },
+  create(context) {
+    const filename = context.filename.replaceAll('\\', '/');
+    const hasDecorator = (node, name) =>
+      node.decorators?.some((decorator) => {
+        const expression = decorator.expression;
+        const callee = expression.type === 'CallExpression' ? expression.callee : expression;
+        return callee.type === 'Identifier' && callee.name === name;
+      }) ?? false;
+
+    return {
+      ClassDeclaration(node) {
+        if (hasDecorator(node, 'Component')) {
+          if (!node.id?.name.endsWith('Component'))
+            context.report({ node, messageId: 'componentClass' });
+          if (!filename.endsWith('.component.ts'))
+            context.report({ node, messageId: 'componentFile' });
+        }
+        if (hasDecorator(node, 'Injectable')) {
+          if (!node.id?.name.endsWith('Service'))
+            context.report({ node, messageId: 'serviceClass' });
+          if (!filename.endsWith('.service.ts')) context.report({ node, messageId: 'serviceFile' });
+        }
+      },
+      ExportNamedDeclaration(node) {
+        if (node.declaration?.type === 'FunctionDeclaration' && !filename.endsWith('.helper.ts')) {
+          context.report({ node, messageId: 'helperFile' });
+        }
+        if (
+          ['TSInterfaceDeclaration', 'TSTypeAliasDeclaration'].includes(node.declaration?.type) &&
+          (!filename.includes('/models/') || !filename.endsWith('.model.ts'))
+        ) {
+          context.report({ node, messageId: 'modelFile' });
+        }
+        const annotation = node.declaration?.typeAnnotation;
+        if (
+          node.declaration?.type === 'TSTypeAliasDeclaration' &&
+          annotation?.type === 'TSUnionType' &&
+          annotation.types.length > 1 &&
+          annotation.types.every(
+            (member) => member.type === 'TSLiteralType' && typeof member.literal.value === 'string',
+          )
+        ) {
+          context.report({ node, messageId: 'simpleUnion' });
+        }
+      },
+    };
+  },
+};
+
 export default defineConfig([
   {
     ignores: [
@@ -30,6 +94,7 @@ export default defineConfig([
   },
   {
     files: ['src/**/*.ts', 'tests/support/**/*.ts'],
+    plugins: { 'repository-naming': { rules: { 'role-files': repositoryNaming } } },
     extends: [
       eslint.configs.recommended,
       tseslint.configs.strictTypeChecked,
@@ -63,6 +128,7 @@ export default defineConfig([
       '@angular-eslint/no-uncalled-signals': 'error',
       '@angular-eslint/use-lifecycle-interface': 'error',
       '@angular-eslint/prefer-host-metadata-property': 'error',
+      '@angular-eslint/component-class-suffix': 'error',
       '@angular-eslint/no-input-prefix': 'error',
       '@angular-eslint/no-output-on-prefix': 'error',
       '@angular-eslint/component-selector': [
@@ -73,6 +139,7 @@ export default defineConfig([
         'error',
         { type: 'attribute', prefix: 'app', style: 'camelCase' },
       ],
+      'repository-naming/role-files': 'error',
       'no-restricted-syntax': [
         'error',
         {
@@ -106,10 +173,10 @@ export default defineConfig([
   },
   {
     files: [
-      'src/app/features/dashboard/dashboard.html',
-      'src/app/features/dashboard/market-table/market-table.html',
-      'src/app/features/settings/settings.html',
-      'src/app/shared/producer-status.html',
+      'src/app/features/dashboard/dashboard.component.html',
+      'src/app/features/dashboard/market-table/market-table.component.html',
+      'src/app/features/settings/settings.component.html',
+      'src/app/shared/producer-status.component.html',
     ],
     rules: {
       // This syntactic rule cannot identify signals; permit only view signal reads.

@@ -1,19 +1,8 @@
 import { DOCUMENT } from '@angular/common';
 import { InjectionToken, inject } from '@angular/core';
-import type { TimerScheduler } from '../domain/scheduling';
-import { createBrowserWorker } from './browser-worker';
-import { browserFrames, type FrameScheduler } from './frame-scheduler';
-import type { WorkerCallbacks, WorkerPort } from './worker-port';
-
-export interface ProducerEnvironment {
-  readonly timers: TimerScheduler;
-  readonly frames: FrameScheduler;
-  supported(): boolean;
-  createWorker(callbacks: WorkerCallbacks): WorkerPort;
-  readonly seed: () => number;
-  hidden(): boolean;
-  onVisibilityChange(callback: () => void): () => void;
-}
+import { createBrowserWorker } from './browser-worker.helper';
+import { browserFrames } from './frame-scheduler';
+import type { ProducerEnvironment } from '../models/worker-contracts.model';
 
 export const PRODUCER_ENVIRONMENT = new InjectionToken<ProducerEnvironment>(
   'Producer environment',

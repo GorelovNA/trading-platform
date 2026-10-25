@@ -1,5 +1,6 @@
 import { max, min, required, schema, validate } from '@angular/forms/signals';
-import { SETTINGS_LIMITS, type SettingsDraft } from '../../market/domain/producer-settings';
+import { SETTINGS_LIMITS } from '../../market/domain/producer-settings.helper';
+import type { SettingsDraft } from '../../market/models/producer-settings.model';
 
 export const SETTINGS_FIELDS = [
   { key: 'instrumentCount', label: 'Instrument count', hint: '1–50 fictional instruments.' },

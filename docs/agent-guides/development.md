@@ -3,11 +3,17 @@
 ## Angular and performance
 
 - Follow the [official Angular style guide](https://angular.dev/style-guide).
-  Use hyphenated filenames that match the primary identifier (`user-profile.ts`,
-  `user-profile.html`, `user-profile.scss`, and `user-profile.spec.ts`). Keep a
-  component's files and tests together. Organize under feature areas and domain
-  concepts; avoid generic type folders such as `components/`, `services/`, and
-  `directives/`. Add a shared area only for genuinely cross-feature UI or logic.
+  Keep a component's `*.component.ts`, `*.component.html`, `*.component.scss`,
+  and `*.component.spec.ts` files together. Component classes end in `Component`;
+  injectable services end in `Service` and use `*.service.ts` / `*.service.spec.ts`.
+  Put exported interfaces and type aliases in feature-local `models/*.model.ts`
+  files. Put standalone helper function exports in `*.helper.ts` files. Organize
+  remaining files under feature and domain folders. Add a shared area only for
+  genuinely cross-feature UI or logic.
+- Use string enums for named finite sets of string values such as statuses,
+  actions, phases, and error codes. Keep structural unions for message/result
+  shapes and use discriminated enum members for their finite tags. ESLint rejects
+  exported string-literal union aliases.
 - Prefer one primary concept per file. In component/directive classes, keep
   injected dependencies, inputs, outputs, and queries before methods; use
   `protected` for members used only by the template and `readonly` for Angular

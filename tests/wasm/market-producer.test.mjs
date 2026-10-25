@@ -12,8 +12,8 @@ import {
   BATCH_PROTOCOL_VERSION,
   BATCH_RECORD_WORDS,
   validateBatch,
-} from '../../src/app/features/market/protocol/batch-layout.ts';
-import { SETTINGS_LIMITS } from '../../src/app/features/market/domain/producer-settings.ts';
+} from '../../src/app/features/market/protocol/batch-layout.helper.ts';
+import { SETTINGS_LIMITS } from '../../src/app/features/market/models/producer-settings.model.ts';
 
 const bytes = await readFile(
   new URL('../../src/generated/market-producer/market_producer_bg.wasm', import.meta.url),

@@ -1,7 +1,7 @@
-import type { Clock, TimerScheduler } from '../domain/scheduling';
-import type { SnapshotValues } from '../domain/market-models';
-import type { SnapshotMessage } from '../protocol/messages';
-import { encodeSnapshot } from '../protocol/snapshot-codec';
+import type { Clock, TimerScheduler } from '../models/worker-contracts.model';
+import type { SnapshotValues } from '../models/market.model';
+import type { SnapshotMessage } from '../models/protocol.model';
+import { encodeSnapshot } from '../protocol/snapshot-codec.helper';
 
 export const PUBLISH_INTERVAL_MS = 50;
 

@@ -1,6 +1,6 @@
-@use './app/app';
-@use './app/features/dashboard/dashboard';
-@use './app/features/settings/settings';
+@use './app/app.component';
+@use './app/features/dashboard/dashboard.component';
+@use './app/features/settings/settings.component';
 
 :root {
   color-scheme: light;

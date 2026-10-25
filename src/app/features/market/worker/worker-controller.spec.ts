@@ -1,9 +1,16 @@
 import { WorkerController } from './worker-controller';
-import type { GeneratorFactory, GeneratorPort } from './generator-port';
-import type { Command, SnapshotMessage, WorkerEvent } from '../protocol/messages';
-import { decodeSnapshot } from '../protocol/snapshot-codec';
-import { DEFAULT_SETTINGS } from '../domain/producer-settings';
-import { FakeTime, batch } from '../../../../../tests/support/market-fakes';
+import type { GeneratorFactory, GeneratorPort } from '../models/worker-contracts.model';
+import {
+  CommandType,
+  CommandOutcome,
+  WorkerEventType,
+  type Command,
+  type SnapshotMessage,
+  type WorkerEvent,
+} from '../models/protocol.model';
+import { decodeSnapshot } from '../protocol/snapshot-codec.helper';
+import { DEFAULT_SETTINGS } from '../domain/producer-settings.helper';
+import { FakeTime, batch } from '../../../../../tests/support/market-fakes.helper';
 import type { Mock } from 'vitest';
 
 interface WorkerHarness {
@@ -15,7 +22,7 @@ interface WorkerHarness {
   close: Mock<() => void>;
   controller: WorkerController;
   reset(runId?: number, commandId?: number, interval?: number): void;
-  control(type: 'pause' | 'resume', commandId: number, runId?: number): void;
+  control(type: CommandType.Pause | CommandType.Resume, commandId: number, runId?: number): void;
   snapshots(): SnapshotMessage[];
   ack(snapshot?: SnapshotMessage): void;
 }
@@ -34,7 +41,7 @@ function setup(): WorkerHarness {
   };
   const output = vi.fn((event: WorkerEvent, transfer: Transferable[]): void => {
     events.push(structuredClone(event, { transfer }));
-    if (event.type === 'snapshot') expect(event.numeric.byteLength).toBe(0);
+    if (event.type === WorkerEventType.Snapshot) expect(event.numeric.byteLength).toBe(0);
   });
   const close = vi.fn();
   const controller = new WorkerController(time, time, factory, output, close);
@@ -53,10 +60,15 @@ function setup(): WorkerHarness {
       },
     });
   };
-  const control = (type: 'pause' | 'resume', commandId: number, runId = 1): void => {
+  const control = (
+    type: CommandType.Pause | CommandType.Resume,
+    commandId: number,
+    runId = 1,
+  ): void => {
     controller.receive({ v: 1, type, runId, commandId });
   };
-  const snapshots = (): SnapshotMessage[] => events.filter((event) => event.type === 'snapshot');
+  const snapshots = (): SnapshotMessage[] =>
+    events.filter((event) => event.type === WorkerEventType.Snapshot);
   const ack = (snapshot = snapshots().at(-1)): void => {
     if (snapshot === undefined) throw new Error('No snapshot');
     controller.receive({
@@ -145,7 +157,7 @@ describe('WorkerController', () => {
     expect(h.snapshots()).toHaveLength(2);
     expect(h.time.jobs.size).toBe(2);
     const oldPublisher = h.time.callbacks.at(-1);
-    h.control('pause', 2);
+    h.control(CommandType.Pause, 2);
     expect(h.snapshots()).toHaveLength(3);
     expect(h.snapshots().at(-1)?.generatedUpdates).toBe(6n);
     oldPublisher?.();
@@ -181,14 +193,14 @@ describe('WorkerController', () => {
     await h.controller.start();
     h.reset();
     h.time.advance(100);
-    h.control('pause', 2);
+    h.control(CommandType.Pause, 2);
     expect(h.events.at(-1)).toMatchObject({ type: 'command-ack', status: 'paused' });
     h.time.advance(10_000);
     h.ack();
     expect(h.snapshots().at(-1)?.generatedUpdates).toBe(4n);
     h.ack();
     expect(h.time.jobs.size).toBe(0);
-    h.control('resume', 3);
+    h.control(CommandType.Resume, 3);
     h.time.advance(49);
     expect(h.generators[0]?.generateBatch).toHaveBeenCalledTimes(2);
     h.time.advance(1);
@@ -201,9 +213,9 @@ describe('WorkerController', () => {
     await h.controller.start();
     h.reset();
     const oldTimer = h.time.callbacks.at(-1);
-    h.control('pause', 2);
+    h.control(CommandType.Pause, 2);
     oldTimer?.();
-    h.control('resume', 3);
+    h.control(CommandType.Resume, 3);
     const resumedTimer = h.time.callbacks.at(-1);
     h.reset(2, 4);
     resumedTimer?.();
@@ -232,20 +244,23 @@ describe('WorkerController', () => {
     expect(h.snapshots()).toHaveLength(2);
     h.reset(1, 3);
     h.reset(3, 2);
-    h.control('pause', 4, 1);
+    h.control(CommandType.Pause, 4, 1);
     expect(
       h.events
         .slice(-3)
-        .every((event) => event.type === 'command-ack' && event.outcome === 'ignored'),
+        .every(
+          (event) =>
+            event.type === WorkerEventType.CommandAck && event.outcome === CommandOutcome.Ignored,
+        ),
     ).toBe(true);
-    h.control('pause', 5, 2);
-    h.control('pause', 5, 2);
-    h.control('pause', 6, 2);
+    h.control(CommandType.Pause, 5, 2);
+    h.control(CommandType.Pause, 5, 2);
+    h.control(CommandType.Pause, 6, 2);
     expect(h.events.at(-2)).toMatchObject({ outcome: 'ignored' });
     expect(h.events.at(-1)).toMatchObject({ outcome: 'applied', status: 'paused' });
     h.ack();
-    h.control('resume', 7, 2);
-    h.control('resume', 8, 2);
+    h.control(CommandType.Resume, 7, 2);
+    h.control(CommandType.Resume, 8, 2);
     expect(h.factory.create).toHaveBeenCalledTimes(2);
     expect(h.time.jobs.size).toBe(1);
   });
@@ -304,9 +319,9 @@ describe('WorkerController', () => {
             ? 'WORKER_FAILED'
             : 'GENERATOR_FAILED';
       expect(h.events.at(-1)).toMatchObject({ type: 'error', code });
-      expect(JSON.stringify(h.events.filter((event) => event.type === 'error'))).not.toMatch(
-        /secret|private/u,
-      );
+      expect(
+        JSON.stringify(h.events.filter((event) => event.type === WorkerEventType.Error)),
+      ).not.toMatch(/secret|private/u);
       expect(h.time.jobs.size).toBe(0);
       h.reset(10, 10);
       h.time.advance(1000);
@@ -327,8 +342,15 @@ describe('WorkerController', () => {
     if (phase === 'idle') await h.controller.start();
     const command: Command =
       phase === 'loading'
-        ? { v: 1, type: 'reset', commandId: 1, runId: 1, seed: 0, settings: DEFAULT_SETTINGS }
-        : { v: 1, type: 'pause', commandId: 1, runId: 1 };
+        ? {
+            v: 1,
+            type: CommandType.Reset,
+            commandId: 1,
+            runId: 1,
+            seed: 0,
+            settings: DEFAULT_SETTINGS,
+          }
+        : { v: 1, type: CommandType.Pause, commandId: 1, runId: 1 };
     h.controller.receive(command);
     expect(h.events.at(-1)).toMatchObject({
       type: 'error',

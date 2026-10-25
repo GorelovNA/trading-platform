@@ -1,6 +1,6 @@
-import { BATCH_FIELDS, BATCH_RECORD_WORDS, validateBatch } from '../protocol/batch-layout';
-import type { InstrumentMetrics, SnapshotValues } from './market-models';
-import { SETTINGS_LIMITS } from './producer-settings';
+import { BATCH_FIELDS, BATCH_RECORD_WORDS, validateBatch } from '../protocol/batch-layout.helper';
+import type { InstrumentMetrics, SnapshotValues } from '../models/market.model';
+import { SETTINGS_LIMITS } from './producer-settings.helper';
 
 interface InstrumentState {
   lastPriceCents: number | null;

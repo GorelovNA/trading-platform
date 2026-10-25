@@ -1,7 +1,4 @@
-export interface FrameScheduler {
-  request(callback: () => void): number;
-  cancel(handle: number): void;
-}
+import type { FrameScheduler } from '../models/worker-contracts.model';
 
 export const browserFrames: FrameScheduler = {
   request: (callback): number => requestAnimationFrame(callback),

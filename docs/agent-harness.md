@@ -7,9 +7,10 @@
 those selected by the task. There are no nested instruction files.
 `README.md` describes development commands; `package.json` defines them.
 Angular implementation guidance belongs in `docs/agent-guides/development.md`.
-That guide follows the official Angular style guide and describes how the
-repo-specific feature/domain structure applies it. ESLint enforces checkable
-Angular correctness conventions; Prettier remains the sole formatting authority.
+That guide follows the official Angular style guide and describes the role-based
+component, service, helper, and model naming and placement rules. ESLint enforces
+these conventions and Angular correctness; Prettier remains the sole formatting
+authority.
 
 The root `CLAUDE.md` imports only `AGENTS.md`. Codex and Kiro use native AGENTS
 support where available. Do not assume nested instructions load lazily across
@@ -44,8 +45,9 @@ validate-repository skill supplies the reusable validation workflow. Exact check
 remain defined by the existing compiler, lint, Angular, and package configuration.
 No substantive development requirement was removed.
 
-Application code, the supplied task description, dependencies, hooks, permissions,
-and CI are unchanged by the harness reorganization. Generated Claude/Kiro skill
+Application code and harness now use role-identifying filenames and feature-local
+model folders. The supplied task description, dependencies, hooks, permissions,
+and CI remain unchanged. Generated Claude/Kiro skill
 folders and synchronization tooling were removed at user request; `.codex`,
 `.agents`, and the minimal root `CLAUDE.md` import remain.
 

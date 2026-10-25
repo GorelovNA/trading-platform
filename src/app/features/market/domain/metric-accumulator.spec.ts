@@ -1,11 +1,11 @@
-import { BATCH_FIELDS, BATCH_RECORD_WORDS } from '../protocol/batch-layout';
+import { BATCH_FIELDS, BATCH_RECORD_WORDS } from '../protocol/batch-layout.helper';
 import { MetricAccumulator } from './metric-accumulator';
 import {
   formatExactPrice,
   formatImbalance,
   formatVolume,
   formatCurrencyCents,
-} from './price-format';
+} from './price-format.helper';
 
 const firstTrade = [0, 10_000, 10, 9_998, 10_000, 400, 600];
 const secondTrade = [0, 10_200, 30, 10_196, 10_200, 600, 400];

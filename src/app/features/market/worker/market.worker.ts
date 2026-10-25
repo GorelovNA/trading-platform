@@ -1,5 +1,5 @@
-import { workerClock, workerTimers } from './scheduler';
-import { createWasmFactory } from './wasm-generator';
+import { workerClock, workerTimers } from './scheduler.helper';
+import { createWasmFactory } from './wasm-generator.helper';
 import { WorkerController } from './worker-controller';
 
 const controller = new WorkerController(

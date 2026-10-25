@@ -1,0 +1,48 @@
+<section
+  class="producer-status"
+  aria-label="Producer status"
+>
+  <div>
+    <p
+      class="status-feedback"
+      role="status"
+    >
+      {{ feedback() }}
+    </p>
+    <p class="muted">
+      {{ rate() }} updates/s nominal across all instruments. Background tabs may run slower.
+    </p>
+    @if (producer.state().activeSettings === null) {
+      <p class="muted">Requested settings are not yet active.</p>
+    }
+    @if (producer.state().stale) {
+      <p>Displayed values are stale.</p>
+    }
+  </div>
+  <div class="producer-controls">
+    @if (producer.state().failure?.retryable) {
+      <button
+        type="button"
+        (click)="producer.retry()"
+      >
+        Retry
+      </button>
+    } @else if (producer.state().status === status.Paused) {
+      <button
+        type="button"
+        [disabled]="!producer.canResume()"
+        (click)="producer.resume()"
+      >
+        Resume
+      </button>
+    } @else {
+      <button
+        type="button"
+        [disabled]="!producer.canPause()"
+        (click)="producer.pause()"
+      >
+        Pause
+      </button>
+    }
+  </div>
+</section>
