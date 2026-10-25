@@ -105,10 +105,11 @@ and appropriate HTTP security headers; no hosting provider is selected here.
 
 ## AI guidance
 
-[AGENTS.md](AGENTS.md) contains persistent instructions for strict, secure,
-accessible, performant Angular development. [.codex/README.md](.codex/README.md)
-explains the project configuration and command rules, including their trust and
-client limitations.
+[AGENTS.md](AGENTS.md) is the shared entry point with conditional development,
+security, and testing guides. [Agent harness maintenance](docs/agent-harness.md)
+documents shared skills, the minimal Claude instruction import, and
+discovery checks. [.codex/README.md](.codex/README.md) explains Codex configuration
+and command rules, including their trust and client limitations.
 
 References: [Angular testing](https://angular.dev/guide/testing),
 [zoneless Angular](https://angular.dev/guide/zoneless), and

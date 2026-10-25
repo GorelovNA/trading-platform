@@ -1,7 +1,9 @@
 # Codex project setup
 
-The root `AGENTS.md` contains the coding, testing, performance, and security
-instructions. Codex discovers it automatically when starting in this repository.
+The root `AGENTS.md` contains shared working agreements and conditional routes to
+coding, testing, performance, and security guides. Codex discovers it when starting
+in this repository. See [the harness guide](../docs/agent-harness.md) for shared
+skills and discovery verification.
 The uppercase filename follows the official discovery convention; a separate
 lowercase copy would drift and is unnecessary.
 
