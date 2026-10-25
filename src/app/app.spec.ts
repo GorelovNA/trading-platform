@@ -3,10 +3,14 @@ import { Router } from '@angular/router';
 
 import { App } from './app';
 import { appConfig } from './app.config';
+import { INTEGRATION_PROOF } from './features/market/client/browser-worker';
 
 describe('Application routing', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({ imports: [App], providers: appConfig.providers });
+    TestBed.overrideProvider(INTEGRATION_PROOF, {
+      useValue: () => ({ result: Promise.resolve(1), dispose: vi.fn() }),
+    });
   });
 
   it('renders the lazy home page through the application shell', async () => {

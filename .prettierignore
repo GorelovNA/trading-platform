@@ -5,5 +5,8 @@ coverage/
 .git/
 .husky/_/
 package-lock.json
+src/generated/market-producer/
+wasm/market-producer/target/
+.playwright-cli/
 # Preserve the supplied requirements verbatim.
 docs/task-description.md

@@ -37,6 +37,9 @@ yarn-error.log
 /libpeerconnection.log
 testem.log
 /typings
+/wasm/market-producer/target/
+/src/generated/market-producer/
+/.playwright-cli/
 __screenshots__/
 
 # System files

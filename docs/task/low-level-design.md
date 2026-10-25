@@ -1,6 +1,6 @@
 # Realtime market dashboard: low-level design and implementation plan
 
-Status: implementation plan; application code has not yet been changed.
+Status: implementation in progress; step 1 is complete. Steps 2–8 remain planned.
 
 Date: 2026-10-25.
 
@@ -626,12 +626,14 @@ Each step is independently reviewable. Do not start later integration work on an
 
 ### Step 1 — Toolchain and integration proof
 
-- [ ] Select/pin Rust, wasm-pack, wasm-bindgen, lockfiles, and optimizer behavior; verify Node/npm requirements.
-- [ ] Add minimal real Rust export, generated output script, worker adapter, `.wasm` loader/declaration, and explicit worker typecheck.
-- [ ] Verify generated web glue initialization in Node tests and an actual browser module worker.
-- [ ] Verify production output paths, hashing, same-origin fetch, and no main-thread Wasm loading.
-- [ ] Compile a small Signal Forms numeric form using installed APIs; prove required/integer/blank handling and template lint compatibility.
-- [ ] Establish external SCSS and production CSP-compatible build settings.
+- [x] Select/pin Rust, wasm-pack, wasm-bindgen, lockfiles, and optimizer behavior; verify Node/npm requirements.
+- [x] Add minimal real Rust export, generated output script, worker adapter, `.wasm` loader/declaration, and explicit worker typecheck.
+- [x] Verify generated web glue initialization in Node tests and an actual browser module worker.
+- [x] Verify production output paths, hashing, same-origin fetch, and no main-thread Wasm loading.
+- [x] Compile a small Signal Forms numeric form using installed APIs; prove required/integer/blank handling and template lint compatibility.
+- [x] Establish external SCSS and production CSP-compatible build settings.
+
+Completed 2026-10-25. Setup, tool pins, output paths, browser evidence, and Windows linker instructions are recorded in [README](../../README.md#rustwasm-integration-proof-lld-step-1). `npm ci` and `npm run check` also passed from a fresh source copy without generated output, node_modules, or Cargo target artifacts.
 
 Exit: clean-clone commands reproduce a working production worker/Wasm load; no unsafe casts, disabled checks, or CDN dependency. Replace temporary proof UI/tests with final behavior in subsequent steps.
 

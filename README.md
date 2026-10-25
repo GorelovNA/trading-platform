@@ -1,13 +1,22 @@
 # Trading Platform
 
-An Angular Hello World skeleton generated in this folder with Angular CLI. No
-market dashboard, backend, or production deployment is included yet.
+An Angular skeleton with the first LLD integration proof: a real Rust/Wasm export
+loaded inside a module worker, plus a small Signal Forms numeric field. The market
+generator and dashboard are implemented in subsequent LLD steps.
 
 ## Requirements and quick start
 
 - Node.js **24.15+ within v24** (`.nvmrc` pins 24.15.0).
 - npm **11.12.1+ within v11**; `packageManager` records the setup version.
 - Git, including its POSIX shell on Windows, for Husky hooks.
+- Rust **1.99.1**, including `rustfmt`, `clippy`, and `wasm32-unknown-unknown`.
+  The crate's `rust-toolchain.toml` selects these components through rustup.
+- wasm-pack **0.15.0**, available on PATH alongside Cargo/Rust. Install with
+  `cargo install wasm-pack --version 0.15.0 --locked`, or use a prebuilt archive
+  from the [official release](https://github.com/wasm-bindgen/wasm-pack/releases/tag/v0.15.0)
+  after checking its SHA-256 against the release asset's official digest.
+- A native Rust linker/toolchain for your OS. On Windows use the Visual Studio
+  C++ build tools and SDK with Rust MSVC, or the GNU alternative below.
 
 ```sh
 npm ci
@@ -20,19 +29,19 @@ archive without `.git`, run `git init` and `npm run prepare` to activate hooks.
 
 ## Available commands
 
-| Command                 | Purpose                                                                         |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| `npm start`             | Development server with live reload                                             |
-| `npm run build`         | Optimized production build in `dist/trading-platform/browser`                   |
-| `npm test`              | Run all unit tests once                                                         |
-| `npm run test:watch`    | Interactive test watch mode                                                     |
-| `npm run test:coverage` | Tests with V8 coverage, HTML and LCOV reports                                   |
-| `npm run typecheck`     | Check app/templates and test TypeScript without emitting files                  |
-| `npm run lint`          | Type-aware ESLint for TS, JS/config files, and Angular templates; zero warnings |
-| `npm run lint:fix`      | Apply safe lint fixes                                                           |
-| `npm run format`        | Format supported source, configuration, and documentation files                 |
-| `npm run format:check`  | Check formatting without writing                                                |
-| `npm run check`         | Formatting, lint, types, coverage, and production build                         |
+| Command                 | Purpose                                                                           |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `npm start`             | Development server with live reload                                               |
+| `npm run build`         | Wasm build, optimized Angular build, and production artifact verification         |
+| `npm test`              | Run all unit tests once                                                           |
+| `npm run test:watch`    | Interactive test watch mode                                                       |
+| `npm run test:coverage` | Tests with V8 coverage, HTML and LCOV reports                                     |
+| `npm run typecheck`     | Check app/templates, tests, and worker TypeScript without emitting files          |
+| `npm run lint`          | Type-aware ESLint for TS, JS/config files, and Angular templates; zero warnings   |
+| `npm run lint:fix`      | Apply safe lint fixes                                                             |
+| `npm run format`        | Format supported source, configuration, and documentation files                   |
+| `npm run format:check`  | Check formatting without writing                                                  |
+| `npm run check`         | Formatting, lint, types, Rust/Wasm tests, coverage, and verified production build |
 
 Coverage reports are written to `coverage/`; thresholds are 90% for statements,
 branches, functions, and lines. Tests cover rendering, lazy route navigation, and
@@ -89,6 +98,77 @@ the commit. Only staged files are processed for speed; run `npm run check` for
 the full quality gate. Do not bypass hooks. The original
 `docs/task-description.md` is excluded from formatting to preserve it verbatim.
 
+## Rust/Wasm integration proof (LLD step 1)
+
+`scripts/toolchain-versions.json` and the crate configuration pin Rust 1.99.1,
+wasm-pack 0.15.0, and wasm-bindgen 0.2.129. `Cargo.lock` locks transitive crates.
+Optional wasm-opt is explicitly disabled, so no optimizer is downloaded. Version
+selection used the official stable Rust manifest, wasm-pack release, crates.io
+metadata, and RustSec advisory entries (no entries found for wasm-pack or
+wasm-bindgen at selection time).
+
+```sh
+npm run wasm:build   # release web module, Cargo --locked
+npm run wasm:check   # rustfmt, Clippy (-D warnings), native tests (--locked)
+npm run test:wasm    # build and execute actual web glue/Wasm using Node initSync
+npm run preview      # build, verify, serve production proof on 127.0.0.1:4173
+```
+
+`start`, `build`, `watch`, `lint`, `typecheck`, and test commands prepare generated
+Wasm first. After Rust edits, restart the dev server/watch command or explicitly
+run `npm run wasm:build`. `npm run check` prepares Wasm once and then runs all
+format/lint/type/Rust/Node/Angular/build checks. It preserves the existing coverage
+thresholds and production budgets. Only the worker entry is excluded from Angular
+coverage as bootstrap glue; the adapter remains covered. Real worker execution is
+verified in a browser, rather than claimed by jsdom tests.
+
+Generated files live in ignored `src/generated/market-producer/`. Never edit them.
+The build removes only the generated raw-instance `market_producer_bg.wasm.d.ts`,
+which otherwise shadows Angular's file-loader URL typing; the public web-module
+declaration remains intact. Cargo's ignored cache lives under the crate's `target/`.
+Builds always invoke Cargo, which checks its inputs before reusing compilation.
+
+Angular's file loader emits `browser/media/market_producer_bg-<hash>.wasm`, alongside
+a hashed worker module in `dist/trading-platform/browser`. The adapter resolves the
+asset relative to that worker, checks origin, HTTP status and MIME, and passes the
+response explicitly to wasm-bindgen. A separate strict worker tsconfig has WebWorker
+types without DOM/test globals. Production output verification uses
+`dist/trading-platform/browser-stats.json` to keep generated glue out of the main
+thread and checks HTML for inline or external asset content.
+
+All authored styles compile through `src/styles.scss`; components do not inject
+styles at runtime. Critical CSS inlining, automatic CSP generation, and integrity
+injection are disabled. `public/_headers` contains the intended static CSP and
+security headers. `npm run preview` applies these headers locally and serves
+`.wasm` with `application/wasm`, returning 404 for missing files. This server is a
+local verification tool. Cloudflare linkage/routing/publication belongs to step 8.
+
+The npm scripts discover rustup under `CARGO_HOME/bin` or the standard
+`~/.cargo/bin` even when it is absent from the terminal's PATH. On Windows, if
+rustup's default toolchain uses GNU, the scripts select the pinned GNU version and
+its bundled self-contained linker. These settings apply only to child processes;
+explicit toolchain/linker environment overrides are preserved. Once the tools are
+installed, ordinary `npm start` and `npm run check` need no session variables.
+
+On Windows without Visual Studio, install Rust's GNU host and select it as your
+rustup default. The proof was validated with this host. For an explicit per-session
+override instead of changing your rustup default, use:
+
+```powershell
+rustup toolchain install 1.99.1-x86_64-pc-windows-gnu --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
+$env:RUSTUP_TOOLCHAIN = '1.99.1-x86_64-pc-windows-gnu'
+$env:CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS = '-Clinker=rust-lld -Clink-self-contained=yes'
+npm ci
+npm run check
+```
+
+Browser proof on 2026-10-25: Chromium 156 on Windows loaded protocol 1 in both
+`npm start` and the production preview under CSP, with same-origin Wasm fetches,
+correct MIME, and no console errors. Clearing the numeric input showed the required
+error; `1.5` showed the integer error; `10` cleared errors. The production initial
+bundle was approximately 218 kB, below the unchanged 250/350 kB budgets. This step
+does not claim the later Chromium/Firefox/WebKit performance acceptance checks.
+
 ## Dependencies and security
 
 Versions are exact and `package-lock.json` is committed for reproducible
@@ -101,7 +181,8 @@ verified with this override. Avoid `npm audit fix --force`.
 The application contains no credentials or remote scripts. Frontend environment
 values are public. Preserve Angular sanitization and validate future external
 input at runtime. Hosting must provide SPA fallback to `index.html`, HTTPS, CSP,
-and appropriate HTTP security headers; no hosting provider is selected here.
+and appropriate HTTP security headers. Cloudflare Pages delivery is planned;
+account/project linkage and publication remain in LLD step 8.
 
 ## AI guidance
 

@@ -8,7 +8,16 @@ import globals from 'globals';
 
 export default defineConfig([
   {
-    ignores: ['dist/**', 'coverage/**', '.angular/**', 'node_modules/**', '.husky/_/**'],
+    ignores: [
+      'dist/**',
+      'coverage/**',
+      '.angular/**',
+      'node_modules/**',
+      '.husky/_/**',
+      'src/generated/**',
+      'wasm/**/target/**',
+      '.playwright-cli/**',
+    ],
   },
   {
     linterOptions: { reportUnusedDisableDirectives: 'error' },
@@ -74,6 +83,17 @@ export default defineConfig([
     },
   },
   {
+    files: ['src/app/features/market/worker/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    languageOptions: {
+      parserOptions: { projectService: false, project: './tsconfig.worker.json' },
+      globals: {
+        ...Object.fromEntries(Object.keys(globals.browser).map((key) => [key, 'off'])),
+        ...globals.worker,
+      },
+    },
+  },
+  {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {
@@ -82,6 +102,16 @@ export default defineConfig([
       '@angular-eslint/template/no-any': 'error',
       '@angular-eslint/template/no-call-expression': 'error',
       '@angular-eslint/template/no-inline-styles': 'error',
+    },
+  },
+  {
+    files: ['src/app/features/home/home.html'],
+    rules: {
+      // This syntactic rule cannot identify signals. Permit only these two signal reads.
+      '@angular-eslint/template/no-call-expression': [
+        'error',
+        { allowList: ['status', 'proofErrors'] },
+      ],
     },
   },
   prettier,

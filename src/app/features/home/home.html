@@ -2,4 +2,24 @@
   <p class="eyebrow">Trading Platform</p>
   <h1>Hello, world!</h1>
   <p>Your Angular application is ready.</p>
+  <section aria-labelledby="proof-title">
+    <h2 id="proof-title">Integration proof</h2>
+    <p role="status">{{ status() }}</p>
+    <label for="proof-count">Whole number</label>
+    <input
+      id="proof-count"
+      type="number"
+      step="1"
+      [formField]="proofForm.count"
+      aria-describedby="proof-errors"
+    />
+    <div
+      id="proof-errors"
+      aria-live="polite"
+    >
+      @for (error of proofErrors(); track error.kind) {
+        <p>{{ error.message }}</p>
+      }
+    </div>
+  </section>
 </main>

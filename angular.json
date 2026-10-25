@@ -34,7 +34,16 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss"]
+            "styles": ["src/styles.scss"],
+            "loader": {
+              ".wasm": "file"
+            },
+            "webWorkerTsConfig": "tsconfig.worker.json",
+            "statsJson": true,
+            "security": {
+              "autoCsp": false
+            },
+            "subresourceIntegrity": false
           },
           "configurations": {
             "production": {
@@ -50,7 +59,15 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": false
+              }
             },
             "development": {
               "optimization": false,
@@ -79,7 +96,10 @@
             "tsConfig": "tsconfig.spec.json",
             "isolate": true,
             "coverageInclude": ["src/app/**/*.ts"],
-            "coverageExclude": ["src/**/*.spec.ts"],
+            "coverageExclude": [
+              "src/**/*.spec.ts",
+              "src/app/features/market/worker/market.worker.ts"
+            ],
             "coverageReporters": ["text", "html", "lcov"],
             "coverageThresholds": {
               "statements": 90,

@@ -1,0 +1,6 @@
+{
+  "rust": "1.99.1",
+  "wasmPack": "0.15.0",
+  "wasmBindgen": "0.2.129",
+  "wasmOpt": false
+}
