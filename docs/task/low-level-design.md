@@ -5,7 +5,7 @@ structured-cloned and validated once on receipt. Backpressure and lifecycle
 guards are unchanged. Earlier milestone evidence describing buffer transfers
 records the previous implementation; see [current validation evidence](production-validation.md#snapshot-transport-simplification).
 
-Status: local implementation and validation complete through step 7, with browser availability limitations recorded below. Step 8 remains planned.
+Status: local implementation and validation complete through step 7, with browser availability limitations recorded below. Step 8 is in progress: deployment tooling and submission guides are prepared; live hosting, push-trigger, and interviewer-access verification remain pending.
 
 Date: 2026-10-25.
 
@@ -708,6 +708,10 @@ Completed locally 2026-10-25 with the browser gaps below. See [production valida
 Exit: quality checks pass; measured results and any platform limitations are recorded. No formal benchmark report or new telemetry product is required.
 
 ### Step 8 — Authorized deployment and submission
+
+Deployment preparation is tracked in [deployment.md](deployment.md), with an
+[architecture walkthrough and rehearsal](interview-walkthrough.md). Pending live
+checks remain unchecked below; local preparation does not establish publication.
 
 - [ ] Use existing GitHub repository, and configure Cloudflare Git integration when authorized. Include Angular code, Rust/Wasm source, tests, lockfiles, and README; preserve development history when commits are authorized (encouraged by the source, not mandatory).
 - [ ] Add build command, pinned tool provisioning, output directory, headers, explicit route rewrites, and preview/production branch configuration.

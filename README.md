@@ -4,6 +4,11 @@ A realtime market simulation with an Angular dashboard. A Rust/WebAssembly produ
 runs in a dedicated worker, keeping trade generation and metric aggregation off the
 UI thread.
 
+Repository: [GorelovNA/trading-platform](https://github.com/GorelovNA/trading-platform).
+The repository is currently private. Cloudflare Pages project: `trading-platform`.
+Assigned demo hostname: `trading-platform-8bq.pages.dev`; first deployment and
+public access verification are pending.
+
 - **Dashboard** (`/dashboard`): live prices, spread, cumulative volume, VWAP, and
   order-book imbalance for simulated instruments.
 - **Settings** (`/settings`): configure the producer with validated Angular Signal
@@ -95,6 +100,59 @@ scripts/                 Build, validation, and local preview tooling
 Generated Wasm bindings live in ignored `src/generated/market-producer/`; regenerate
 them through the build commands. Production assets are written to
 `dist/trading-platform/browser/`.
+
+## Cloudflare Pages deployment
+
+Use **Pages → Connect to Git** with the existing GitHub repository. The setup form
+must include a **Build output directory**. A form asking for `wrangler deploy` is
+the Workers setup flow.
+
+| Setting                   | Value                           |
+| ------------------------- | ------------------------------- |
+| Framework preset          | None                            |
+| Production branch         | `main`                          |
+| Root directory            | Repository root                 |
+| Build command             | `bash scripts/ci-build.sh`      |
+| Build output directory    | `dist/trading-platform/browser` |
+| `NODE_VERSION`            | `24.15.0`                       |
+| `SKIP_DEPENDENCY_INSTALL` | `1`                             |
+
+Set the environment variables for **both Production and Preview**. The script
+pins npm from `package.json`, provisions Rust/rustfmt/Clippy and the Wasm target,
+and installs wasm-pack from an exact release. Bootstrap downloads are checked
+against recorded official SHA-256 digests in `scripts/toolchain-versions.json`.
+It then runs `npm ci` and the complete `npm run check` gate. Any failed stage exits
+before publication. Local development continues to use the commands above;
+the provisioner targets Cloudflare's Linux x86_64 build environment.
+
+Enable automatic production deployments and previews for **all non-production
+branches**. Keep build watch paths at include `*`, exclude nothing; do not use
+build-skip commit prefixes. Keep the submitted demo accessible without Cloudflare
+Access authentication. The app needs no runtime environment variables or secrets.
+
+See the [deployment and submission checklist](docs/task/deployment.md) for live
+verification, access, failure diagnosis, and evidence still needed. The
+[interview walkthrough](docs/task/interview-walkthrough.md) covers the architecture
+and a small-change rehearsal.
+
+## Troubleshooting
+
+- **Rust or wasm-pack missing:** install the exact versions above and ensure the
+  Cargo bin directory is on PATH. On Windows, a native linker is also required.
+- **Generated Wasm imports missing:** run `npm run wasm:build`; generated output
+  is intentionally ignored by Git.
+- **Pages installs dependencies before the build script:** set
+  `SKIP_DEPENDENCY_INSTALL=1` in both deployment environments.
+- **Pages fails a quality check:** fix the reported stage and rerun
+  `npm run check`. Publishing uses the same gate; a build-only command is not a
+  substitute.
+- **Worker/Wasm fails to load:** check the binary request status and
+  `application/wasm` MIME type, CSP response headers, and hashed worker/binary
+  paths. Missing assets must return 404. Retry recreates the worker; an old tab
+  after a deployment may need a reload to fetch current assets.
+- **Interviewer cannot open the repository:** a private repository requires an
+  accepted collaborator invitation. Test the demo separately in a signed-out
+  browser; owner access does not establish interviewer access.
 
 ## Further reading
 

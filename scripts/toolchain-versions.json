@@ -2,5 +2,10 @@
   "rust": "1.99.1",
   "wasmPack": "0.15.0",
   "wasmBindgen": "0.2.129",
-  "wasmOpt": false
+  "wasmOpt": false,
+  "rustup": "1.29.0",
+  "linuxX64": {
+    "rustupSha256": "4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10",
+    "wasmPackSha256": "c09f971ecaed9a2efc80fdcea7a00ef6b53c7fadc8c57d1f61b53a6aa66b668a"
+  }
 }
