@@ -1,8 +1,9 @@
 # Trading Platform
 
-An Angular skeleton with the first LLD integration proof: a real Rust/Wasm export
-loaded inside a module worker, plus a small Signal Forms numeric field. The market
-generator and dashboard are implemented in subsequent LLD steps.
+An Angular skeleton with the first two LLD steps complete: the worker/Wasm and
+Signal Forms integration proof, shared domain contracts, and a deterministic Rust
+market generator. Aggregation, the worker lifecycle, and dashboard follow in
+subsequent steps.
 
 ## Requirements and quick start
 
@@ -168,6 +169,37 @@ correct MIME, and no console errors. Clearing the numeric input showed the requi
 error; `1.5` showed the integer error; `10` cleared errors. The production initial
 bundle was approximately 218 kB, below the unchanged 250/350 kB budgets. This step
 does not claim the later Chromium/Firefox/WebKit performance acceptance checks.
+
+## Domain and deterministic producer (LLD step 2)
+
+`src/app/features/market/domain/` defines immutable market/view contracts, the
+settings parser, inclusive limits/defaults, and stable `SIM001`–`SIM050` labels.
+`validateSettings(unknown)` returns a fresh validated settings object or field
+issues without coercing input. These modules have no Angular or browser imports.
+
+`wasm/market-producer/src/` implements xorshift32, per-instrument evolving prices,
+and the seven-word ABI v1 batch layout shared with
+`src/app/features/market/protocol/batch-layout.ts`. `MarketProducer` exposes a
+constructor accepting instrument count and seed, `generate_batch(count)`, and
+wasm-bindgen's `free()`. Counts are checked and output capacity is reserved before
+any simulation state advances. Errors crossing the Wasm boundary use fixed codes.
+The raw bindings take u32 arguments and follow JavaScript-to-u32 conversion rules;
+TypeScript domain validation must precede calls with application settings.
+
+`npm run wasm:check` runs the native generator tests, including exact fixed-seed
+records, all record invariants, price clamps, repeated instruments, consecutive
+batch continuity, zero-seed normalization, and rejected counts preserving state.
+`npm run test:wasm` tests the actual release web module against shared TypeScript
+layout/limit constants. It verifies Uint32Array output, requested counts, state
+continuity, safe errors, output ownership through linear-memory growth, and
+free/recreate. Returned arrays are independent JavaScript copies and remain valid
+after the producer is freed; the freed producer cannot generate another batch.
+
+`npm run check` passed on 2026-10-25: 96 Angular/Vitest tests, 9 native Rust tests,
+5 compiled-Wasm tests, and 5 tooling tests. Coverage remains above all 90%
+thresholds; the production initial bundle remains approximately 218 kB. The
+temporary proof UI still loads protocol 1; generation is connected to the worker
+controller in step 4, after step 3's metrics and transport implementation.
 
 ## Dependencies and security
 

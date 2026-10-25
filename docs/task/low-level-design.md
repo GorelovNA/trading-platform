@@ -1,6 +1,6 @@
 # Realtime market dashboard: low-level design and implementation plan
 
-Status: implementation in progress; step 1 is complete. Steps 2–8 remain planned.
+Status: implementation in progress; steps 1–2 are complete. Steps 3–8 remain planned.
 
 Date: 2026-10-25.
 
@@ -639,10 +639,12 @@ Exit: clean-clone commands reproduce a working production worker/Wasm load; no u
 
 ### Step 2 — Domain models and deterministic Rust producer
 
-- [ ] Implement shared TypeScript contracts/settings validation and stable symbol mapping.
-- [ ] Implement Rust PRNG, bounded state transitions, checked batch allocation, and ABI v1.
-- [ ] Add native invariants/determinism tests and actual compiled-Wasm contract tests.
-- [ ] Verify free/recreate behavior and malformed request handling.
+- [x] Implement shared TypeScript contracts/settings validation and stable symbol mapping.
+- [x] Implement Rust PRNG, bounded state transitions, checked batch allocation, and ABI v1.
+- [x] Add native invariants/determinism tests and actual compiled-Wasm contract tests.
+- [x] Verify free/recreate behavior and malformed request handling.
+
+Completed 2026-10-25. Native Rust and actual generated web-module tests prove fixed records, bounded evolving state, batch counts, zero-seed normalization, split-call continuity, and unchanged state after invalid counts. Compiled-Wasm tests also verify independent output buffers across linear-memory growth and producer free/recreate. Shared TypeScript validation rejects malformed settings without coercion. `npm run check` passed with all 96 Angular/Vitest tests, 9 native Rust tests, 5 compiled-Wasm tests, and the existing tooling tests; coverage and production budgets remain satisfied. See [README](../../README.md#domain-and-deterministic-producer-lld-step-2).
 
 Exit: fixed seeds reproduce identical valid batches; requested batch length and state continuity are proven in the compiled module.
 
