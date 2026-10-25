@@ -11,6 +11,7 @@ import {
   BATCH_LIMITS,
   BATCH_PROTOCOL_VERSION,
   BATCH_RECORD_WORDS,
+  validateBatch,
 } from '../../src/app/features/market/protocol/batch-layout.ts';
 import { SETTINGS_LIMITS } from '../../src/app/features/market/domain/producer-settings.ts';
 
@@ -22,6 +23,8 @@ const wasm = initSync({ module: bytes });
 test('the delivered web module initializes with protocol v1', () => {
   assert.equal(protocol_version(), BATCH_PROTOCOL_VERSION);
   assert.equal(protocol_version(), 1);
+  assert.equal(BATCH_LIMITS.maxInstrumentCount, SETTINGS_LIMITS.instrumentCount.max);
+  assert.equal(BATCH_LIMITS.maxBatchCount, SETTINGS_LIMITS.updatesPerBatch.max);
 });
 
 test('real compiled batches match the shared packed ABI and preserve evolving prices', () => {
@@ -33,6 +36,7 @@ test('real compiled batches match the shared packed ABI and preserve evolving pr
       for (const count of [1, 100, SETTINGS_LIMITS.updatesPerBatch.max]) {
         const batch = producer.generate_batch(count);
         assert.ok(batch instanceof Uint32Array);
+        assert.equal(validateBatch(batch, count, instrumentCount), true);
         assert.equal(batch.length, count * BATCH_RECORD_WORDS);
         assert.equal(batch.byteLength, count * 28);
         for (let offset = 0; offset < batch.length; offset += BATCH_RECORD_WORDS) {

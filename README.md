@@ -1,9 +1,9 @@
 # Trading Platform
 
-An Angular skeleton with the first two LLD steps complete: the worker/Wasm and
-Signal Forms integration proof, shared domain contracts, and a deterministic Rust
-market generator. Aggregation, the worker lifecycle, and dashboard follow in
-subsequent steps.
+An Angular skeleton with the first three LLD steps complete: the worker/Wasm and
+Signal Forms integration proof, a deterministic Rust market generator, exact
+metrics, and validated snapshot transport. The worker lifecycle and dashboard
+follow in subsequent steps.
 
 ## Requirements and quick start
 
@@ -200,6 +200,44 @@ after the producer is freed; the freed producer cannot generate another batch.
 thresholds; the production initial bundle remains approximately 218 kB. The
 temporary proof UI still loads protocol 1; generation is connected to the worker
 controller in step 4, after step 3's metrics and transport implementation.
+
+## Exact metrics and snapshot transport (LLD step 3)
+
+`MetricAccumulator` in the market domain is intended only for the worker. Its
+`applyValidatedBatch(batch, requestedCount)` entry validates the entire packed
+batch before changing any state. It retains per-instrument latest values and
+bigint volume/notional, plus a bigint update count. `snapshotValues()` returns
+independent immutable metrics with exact rational VWAP. Replace the accumulator
+to start a new run. No event history is retained.
+
+`price-format.ts` formats USD cents and volume without converting bigint totals
+to numbers, rounds positive VWAP ties half-up only for display, and handles
+unavailable values and rounded negative-zero imbalance. Tests reproduce the
+worked example: $102.00 last price, $0.04 spread, 40 units, $101.50 VWAP, +0.20
+imbalance.
+
+The market protocol defines readonly command/event unions, parsers accepting
+unknown input, and the five-Float64-per-row snapshot ABI. `encodeSnapshot` allocates
+a fresh numeric buffer and copies bigint totals into the envelope. Send it with
+`postMessage(snapshot, [snapshot.numeric])`. `decodeSnapshot` validates and returns
+immutable values without exposing the wire buffer. Shared, detached, malformed,
+and forged buffers are rejected; genuine ArrayBuffers from another realm are
+accepted using a native brand check.
+
+Structural validation uses the message's bounded row count. The future facade
+must discard/acknowledge structurally valid stale runs before calling
+`validateSnapshotProgress` for the desired run/count and last accepted snapshot.
+That check rejects nonincreasing sequences and decreasing update counts or row
+totals. It stores no validation history itself.
+
+`npm run check` passed on 2026-10-25 with 383 Angular/Vitest tests, plus the 9 Rust,
+5 compiled-Wasm, and 5 tooling tests. Tests cover atomic late-record rejection,
+exact cumulative notional beyond safe-number precision, arbitrary bigint snapshot
+round trips, malformed messages, nulls, rounding, and real structuredClone transfer
+with sender detachment. Compiled-Wasm batches also pass the TypeScript batch
+validator. Coverage remains above all 90% thresholds and the production initial
+bundle remains approximately 218 kB. Actual worker publication and browser
+transfer integration follow in step 4; this step does not change the proof UI.
 
 ## Dependencies and security
 

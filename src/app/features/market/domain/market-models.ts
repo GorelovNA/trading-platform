@@ -14,6 +14,11 @@ export interface InstrumentMetrics {
   readonly imbalance: number | null;
 }
 
+export interface SnapshotValues {
+  readonly generatedUpdates: bigint;
+  readonly metrics: readonly InstrumentMetrics[];
+}
+
 export type ProducerStatus = 'initializing' | 'running' | 'paused' | 'error' | 'disposed';
 export type ControlAction = 'reset' | 'pause' | 'resume';
 

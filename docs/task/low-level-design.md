@@ -1,6 +1,6 @@
 # Realtime market dashboard: low-level design and implementation plan
 
-Status: implementation in progress; steps 1–2 are complete. Steps 3–8 remain planned.
+Status: implementation in progress; steps 1–3 are complete. Steps 4–8 remain planned.
 
 Date: 2026-10-25.
 
@@ -347,7 +347,7 @@ Validation has two stages: structural validation uses the message's own bounded 
 | 3              | Latest spread cents, or 0 if unavailable                  |
 | 4              | Imbalance, or 0 if unavailable                            |
 
-Valid flags are 0, 1, and 3. Undefined fields must contain canonical zero. When present, price/spread must be positive integers within simulation bounds and imbalance finite in [-1, +1]. `totals.length` must equal row count, with nonnegative bigint values. No-data rows require zero totals; data rows require positive volume/notional. Validate `volume <= notionalCents <= volume * 1_000_009n`. Validate aggregate volume is between `generatedUpdates` and `generatedUpdates * 1_000n` after any trade. For successive current-run snapshots, generated-update count and per-instrument totals cannot decrease.
+Valid flags are 0, 1, and 3. Undefined fields must contain canonical zero. When present, price/spread must be positive integers within simulation bounds and imbalance finite in [-1, +1]. `totals.length` must equal row count, with nonnegative bigint values. No-data rows require zero totals; data rows require positive volume/notional. Validate `volume <= notionalCents <= volume * 1_000_009n`. Validate aggregate volume is between `generatedUpdates` and `generatedUpdates * 1_000n` after any trade, and that the number of data rows does not exceed `generatedUpdates`. For successive current-run snapshots, generated-update count and per-instrument totals cannot decrease.
 
 The worker captures numeric fields and totals synchronously from the same accumulator state, then calls `postMessage(snapshot, [snapshot.numeric])`. The transferred buffer is independently allocated, never Wasm linear memory. Its sender view is unusable after transfer. Bigints remain in the structured-clone envelope, avoiding fixed-width truncation and JSON limitations [1].
 
@@ -650,10 +650,12 @@ Exit: fixed seeds reproduce identical valid batches; requested batch length and 
 
 ### Step 3 — Exact metrics and snapshot transport
 
-- [ ] Implement full-batch validation, worker-private bigint accumulators, and rational VWAP.
-- [ ] Implement exact currency/volume formatting and null handling.
-- [ ] Implement command/event validation, numeric snapshot encoder/decoder, and ownership rules.
-- [ ] Add example, isolation, overflow-precision, malformed payload, transfer, and rounding tests.
+- [x] Implement full-batch validation, worker-private bigint accumulators, and rational VWAP.
+- [x] Implement exact currency/volume formatting and null handling.
+- [x] Implement command/event validation, numeric snapshot encoder/decoder, and ownership rules.
+- [x] Add example, isolation, overflow-precision, malformed payload, transfer, and rounding tests.
+
+Completed 2026-10-25. `MetricAccumulator.applyValidatedBatch` performs full validation before accounting, retains no input records, and publishes immutable values. Tests derive the worked-example display from packed updates, prove exact cumulative notional above safe-number precision, and cover instrument isolation, null books, and display-only rounding. The codec validates structural payloads separately from current-run progress, preserves arbitrary bigint totals, and decodes without retaining the wire buffer. Real `structuredClone` transfer tests prove sender detachment and receiver values, including cross-realm ArrayBuffer validation; browser worker transfer remains part of later integration. `npm run check` passed with 383 Angular/Vitest tests, existing native/Wasm/tooling tests, coverage thresholds, and production budgets. See [README](../../README.md#exact-metrics-and-snapshot-transport-lld-step-3).
 
 Exit: expected worked-example UI values derive from real updates; snapshots preserve exact totals and detach only independent buffers.
 
