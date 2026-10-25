@@ -5,9 +5,9 @@ export interface ProducerSettings {
 }
 
 export interface SettingsDraft {
-  instrumentCount: number;
-  updatesPerBatch: number;
-  batchIntervalMs: number;
+  instrumentCount: number | null;
+  updatesPerBatch: number | null;
+  batchIntervalMs: number | null;
 }
 
 export interface FieldIssue {

@@ -1,19 +1,10 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { App } from './app';
 import { appConfig } from './app.config';
-import { routes } from './app.routes';
 import { Producer } from './features/market/client/producer';
 import { PRODUCER_ENVIRONMENT } from './features/market/client/producer-environment';
 import { ClientHarness } from '../../tests/support/market-fakes';
-
-@Component({
-  selector: 'app-navigation-target',
-  template: '<p>Other lazy route</p>',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-class NavigationTarget {}
 
 describe('Application routing and producer lifetime', () => {
   let h: ClientHarness;
@@ -28,25 +19,27 @@ describe('Application routing and producer lifetime', () => {
     });
   });
 
-  it('starts the default producer from the shell and renders the lazy home page', async () => {
+  it('starts the default producer from the shell and renders the lazy dashboard', async () => {
     const fixture = TestBed.createComponent(App);
     await TestBed.inject(Router).navigateByUrl('/');
     h.worker.ready();
     h.worker.ack();
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('h1')?.textContent).toBe('Hello, world!');
-    expect(element.textContent).toContain('Market producer: running.');
+    expect(element.querySelector('h1')?.textContent).toBe('Market dashboard');
+    expect(TestBed.inject(Router).url).toBe('/dashboard');
+    expect(element.textContent).toContain('Running');
+    expect(element.querySelector('[aria-current="page"]')?.textContent).toBe('Dashboard');
     expect(h.workers).toHaveLength(1);
   });
 
-  it('redirects unknown URLs to home', async () => {
+  it('redirects unknown URLs to dashboard', async () => {
     const fixture = TestBed.createComponent(App);
     await TestBed.inject(Router).navigateByUrl('/unknown');
     await fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/');
+    expect(TestBed.inject(Router).url).toBe('/dashboard');
     expect((fixture.nativeElement as HTMLElement).querySelector('h1')?.textContent).toBe(
-      'Hello, world!',
+      'Market dashboard',
     );
   });
 
@@ -55,13 +48,6 @@ describe('Application routing and producer lifetime', () => {
     async (status) => {
       const fixture = TestBed.createComponent(App);
       const router = TestBed.inject(Router);
-      router.resetConfig([
-        {
-          path: 'away',
-          loadComponent: (): Promise<typeof NavigationTarget> => Promise.resolve(NavigationTarget),
-        },
-        ...routes,
-      ]);
       const producer = TestBed.inject(Producer);
       await router.navigateByUrl('/');
       h.worker.ready();
@@ -72,9 +58,11 @@ describe('Application routing and producer lifetime', () => {
       }
       const state = producer.state();
       const commands = h.worker.commands.length;
-      await router.navigateByUrl('/away');
+      await router.navigateByUrl('/settings');
       await fixture.whenStable();
-      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Other lazy route');
+      expect((fixture.nativeElement as HTMLElement).querySelector('h1')?.textContent).toBe(
+        'Producer settings',
+      );
       await router.navigateByUrl('/');
       await fixture.whenStable();
       expect(producer.state()).toBe(state);

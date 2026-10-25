@@ -1,9 +1,9 @@
 # Trading Platform
 
-An Angular application with the first five LLD steps complete: deterministic
-Rust/Wasm generation, exact metrics, validated snapshot transport, a bounded
-worker lifecycle, and the root producer facade. The temporary Hello World and
-Signal Forms proof UI remains until the dashboard/settings work in step 6.
+A realtime market simulation with a live Angular dashboard and Signal Forms
+settings. Rust/Wasm generates trades in a dedicated worker; exact cumulative
+metrics reach the UI through bounded transferable snapshots. Local implementation
+and production validation cover LLD steps 1–7. Hosting integration remains step 8.
 
 ## Requirements and quick start
 
@@ -55,8 +55,8 @@ Karma, browser installation, or Zone.js is needed. Test files are isolated.
 - Angular **22.2.3**, CLI/build **22.2.4**, TypeScript **6.0.3**, Vitest **5.0.5**,
   ESLint **10.13.0**, angular-eslint **22.6.0**.
 - Standalone bootstrap and a small router outlet shell that starts the root
-  producer once. The Home feature loads through a dynamic `loadComponent` import,
-  producing a separate build chunk; navigation preserves the producer.
+  producer once. Dashboard and Settings load through dynamic `loadComponent`
+  imports; navigation preserves the running or paused producer.
 - Zoneless change detection. OnPush is explicitly configured on existing
   components and as the component schematic default, and ESLint rejects opting
   out. Angular 22 also defaults to OnPush when metadata is omitted.
@@ -78,7 +78,10 @@ src/app/
   app.ts                 # OnPush bootstrap shell
   app.config.ts          # Application providers
   app.routes.ts          # Lazy routes and fallback
-  features/home/         # Hello World page and its unit test
+  features/dashboard/    # Formatted metrics and semantic market table
+  features/settings/     # Isolated Signal Forms draft and Apply
+  features/market/       # Domain, protocol, worker, and root facade
+  shared/                # Producer lifecycle feedback and controls
 ```
 
 Generate new components with the local CLI:
@@ -297,6 +300,40 @@ Validation on 2026-10-25:
 - Firefox smoke could not run because its Playwright browser binary is absent.
   Cross-browser smoke, full UI behavior, and performance/memory measurements remain
   in steps 6–7; the browser observations above are not latency benchmarks.
+
+## Dashboard, settings, and production validation (LLD steps 6 and 7)
+
+The application opens `/dashboard`; `/settings` edits an isolated draft initialized
+from requested settings. The shell starts one producer for the application lifetime.
+Both pages share lifecycle feedback, nominal rate, Pause/Resume, and safe Retry.
+Navigation preserves the run. Apply starts a fresh running run and immediately
+clears rows/totals, including when values are unchanged or the producer was paused.
+Leaving Settings discards unsaved edits. Reload starts defaults; no settings or
+trade history is persisted.
+
+Dashboard formatting preserves bigint totals and rational VWAP until display. Its
+semantic six-column table retains row identity by instrument ID, shows initial
+unavailable values/zero volume, and scrolls horizontally on narrow screens. The
+native Signal Forms fields use nullable numeric drafts because Angular 22.2.3
+writes null on clearing; required/integer/range validation and domain validation
+precede Apply. Styles remain in the external global stylesheet under scoped
+selectors, with labels, error associations, focus states, and lifecycle-only live
+announcements.
+
+`npm run check` passed with 450 Angular tests and all existing native Rust,
+compiled-Wasm, and tooling tests. `npm audit` reported zero vulnerabilities. The
+production initial bundle is 256.93 kB: below the unchanged 350 kB error limit,
+with the existing 250 kB warning disclosed. Chromium production smoke verifies
+controls, drafts, real worker transfers, CSP, MIME, explicit deep links, and safe
+load failure/retry. Maximum-rate timing and five-minute heap observations, plus
+the unavailable Firefox/WebKit checks, are recorded in
+[local production validation](docs/task/production-validation.md).
+
+`npm run preview` serves the production output at `127.0.0.1:4173`; set
+`PREVIEW_PORT` to select another port. It applies `_headers` and only the explicit
+`_redirects` product routes. Missing assets and unknown direct URLs return 404.
+These static assets are ready for later hosting validation; no deployment or
+Git/Cloudflare account changes are part of steps 6–7.
 
 ## Dependencies and security
 

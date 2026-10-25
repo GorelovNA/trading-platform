@@ -1,0 +1,43 @@
+<section class="producer-settings">
+  <p class="eyebrow">Simulation controls</p>
+  <h1>Producer settings</h1>
+  <p class="page-intro">
+    Edit a draft, then Apply to start a fresh running simulation. Applying clears all values and
+    totals, even with identical settings. Leaving this page discards unsaved edits.
+  </p>
+  <app-producer-status />
+  <form
+    novalidate
+    (submit)="applySettings($event)"
+  >
+    @for (field of fields(); track field.key) {
+      <div class="settings-field">
+        <label [for]="field.key">{{ field.label }}</label>
+        <p
+          class="muted"
+          [id]="field.key + '-hint'"
+        >
+          {{ field.hint }}
+        </p>
+        <input
+          [id]="field.key"
+          type="number"
+          step="1"
+          [formField]="field.field"
+          [attr.aria-invalid]="field.invalid"
+          [attr.aria-describedby]="field.key + '-hint ' + field.key + '-errors'"
+        />
+        <div
+          class="field-errors"
+          [id]="field.key + '-errors'"
+        >
+          @for (error of field.errors; track $index) {
+            <p>{{ error }}</p>
+          }
+        </div>
+      </div>
+    }
+    <button type="submit">Apply</button>
+    <p role="status">{{ submissionMessage() }}</p>
+  </form>
+</section>

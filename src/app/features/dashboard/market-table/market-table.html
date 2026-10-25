@@ -1,0 +1,34 @@
+<div
+  class="table-scroll"
+  role="region"
+  aria-label="Market metrics"
+  tabindex="0"
+>
+  <table>
+    <caption>
+      Cumulative metrics for the current run. — means unavailable.
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Symbol</th>
+        <th scope="col">Last price</th>
+        <th scope="col">Bid–ask spread</th>
+        <th scope="col">Volume (units)</th>
+        <th scope="col">VWAP</th>
+        <th scope="col">Book imbalance</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.instrumentId) {
+        <tr>
+          <th scope="row">{{ row.symbol }}</th>
+          <td>{{ row.lastPrice }}</td>
+          <td>{{ row.spread }}</td>
+          <td>{{ row.volume }}</td>
+          <td>{{ row.vwap }}</td>
+          <td>{{ row.imbalance }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

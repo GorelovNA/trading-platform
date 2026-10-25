@@ -38,9 +38,30 @@ assert.match(workerOutput, /worker-[\w-]+\.js$/u, 'Worker must be hashed.');
 for (const [name, output] of outputs) {
   if (name !== workerOutput) {
     assert.ok(
+      !Object.keys(output.inputs).some((input) =>
+        /(?:metric-accumulator|worker-controller|wasm-generator)\.ts$/u.test(input),
+      ),
+      `${name}: worker implementation in main-thread graph`,
+    );
+    assert.ok(
       !output.imports.some((item) => item.path.endsWith('.wasm')),
       `${name}: main-thread Wasm import`,
     );
   }
 }
+const redirects = (await readFile(new URL('_redirects', directory), 'utf8'))
+  .trim()
+  .split('\n')
+  .map((line) => line.trim());
+assert.deepEqual(
+  redirects,
+  [
+    '/dashboard /index.html 200',
+    '/dashboard/ /index.html 200',
+    '/settings /index.html 200',
+    '/settings/ /index.html 200',
+  ],
+  'Only product routes may rewrite to the application.',
+);
+assert.ok(files.includes('404.html'), 'A static 404 must prevent missing-asset SPA fallback.');
 console.log(`Verified external HTML assets, worker-only glue, hashed worker and ${wasm[0]}.`);

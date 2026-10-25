@@ -4,8 +4,18 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    title: 'Trading Platform',
-    loadComponent: () => import('./features/home/home').then((module) => module.Home),
+    redirectTo: 'dashboard',
   },
-  { path: '**', redirectTo: '' },
+  {
+    path: 'dashboard',
+    title: 'Market dashboard | Trading Platform',
+    loadComponent: () =>
+      import('./features/dashboard/dashboard').then((module) => module.Dashboard),
+  },
+  {
+    path: 'settings',
+    title: 'Producer settings | Trading Platform',
+    loadComponent: () => import('./features/settings/settings').then((module) => module.Settings),
+  },
+  { path: '**', redirectTo: 'dashboard' },
 ];

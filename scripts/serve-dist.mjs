@@ -22,10 +22,22 @@ const mime = {
   '.wasm': 'application/wasm',
   '.ico': 'image/x-icon',
 };
+// Mirror only the explicit static-host rewrites; missing assets must remain 404s.
+const routes = new Map(
+  (await readFile(resolve(directory, '_redirects'), 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => line.trim().split(/\s+/u))
+    .filter(([, target, status]) => target === '/index.html' && status === '200')
+    .map(([path, target]) => [path, target]),
+);
 createServer(async (request, response) => {
   try {
     const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-    const file = resolve(directory, `.${path === '/' ? '/index.html' : path}`);
+    const file = resolve(
+      directory,
+      `.${path === '/' ? '/index.html' : (routes.get(path) ?? path)}`,
+    );
     if (!file.startsWith(`${directory}${sep}`) || !mime[extname(file)]) {
       response.writeHead(404, headers).end();
       return;
@@ -41,4 +53,6 @@ createServer(async (request, response) => {
   } catch {
     response.writeHead(404, headers).end();
   }
-}).listen(4173, '127.0.0.1', () => console.log('Production proof: http://127.0.0.1:4173'));
+}).listen(Number(process.env.PREVIEW_PORT ?? 4173), '127.0.0.1', function () {
+  console.log(`Production proof: http://127.0.0.1:${this.address().port}`);
+});

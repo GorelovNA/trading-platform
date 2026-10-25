@@ -105,12 +105,28 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/app/features/home/home.html'],
+    files: [
+      'src/app/features/dashboard/dashboard.html',
+      'src/app/features/dashboard/market-table/market-table.html',
+      'src/app/features/settings/settings.html',
+      'src/app/shared/producer-status.html',
+    ],
     rules: {
-      // This syntactic rule cannot identify signals. Permit only these two signal reads.
+      // This syntactic rule cannot identify signals; permit only view signal reads.
       '@angular-eslint/template/no-call-expression': [
         'error',
-        { allowList: ['status', 'proofErrors'] },
+        {
+          allowList: [
+            'rows',
+            'fields',
+            'submissionMessage',
+            'feedback',
+            'rate',
+            'state',
+            'canPause',
+            'canResume',
+          ],
+        },
       ],
     },
   },

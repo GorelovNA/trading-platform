@@ -1,0 +1,37 @@
+.market-dashboard {
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: white;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  caption {
+    padding: 1rem;
+    text-align: left;
+    color: var(--muted);
+    font-size: 0.875rem;
+    caption-side: bottom;
+  }
+  th,
+  td {
+    padding: 1rem 1.25rem;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+  }
+  th:first-child {
+    text-align: left;
+  }
+  thead {
+    background: #edf3f0;
+    font-size: 0.8rem;
+  }
+  tbody tr:last-child > * {
+    border-bottom: 0;
+  }
+}

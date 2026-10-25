@@ -64,6 +64,16 @@ export class Producer {
     }),
   );
   readonly state = this.view.asReadonly();
+  readonly canPause = computed(
+    () => this.state().status === 'running' && this.state().pendingAction === null,
+  );
+  readonly canResume = computed(
+    () => this.state().status === 'paused' && this.state().pendingAction === null,
+  );
+  readonly nominalUpdatesPerSecond = computed(() => {
+    const settings = this.state().activeSettings ?? this.state().requestedSettings;
+    return (settings.updatesPerBatch * 1_000) / settings.batchIntervalMs;
+  });
   readonly failureMessage = computed(() => {
     const failure = this.state().failure;
     return failure === null ? null : FAILURE_MESSAGES[failure.code];

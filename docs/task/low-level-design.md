@@ -1,6 +1,6 @@
 # Realtime market dashboard: low-level design and implementation plan
 
-Status: implementation in progress; steps 1–5 are complete. Steps 6–8 remain planned.
+Status: local implementation and validation complete through step 7, with browser availability limitations recorded below. Step 8 remains planned.
 
 Date: 2026-10-25.
 
@@ -113,9 +113,9 @@ interface ProducerSettings {
 }
 
 interface SettingsDraft {
-  instrumentCount: number;
-  updatesPerBatch: number;
-  batchIntervalMs: number;
+  instrumentCount: number | null;
+  updatesPerBatch: number | null;
+  batchIntervalMs: number | null;
 }
 
 interface FieldIssue {
@@ -175,7 +175,7 @@ Use `null` for absent values, not NaN or zero sentinels in application models. N
 
 `validateSettings(input: unknown): Validation<ProducerSettings>` returns a fresh validated object. Defaults are `{ instrumentCount: 5, updatesPerBatch: 100, batchIntervalMs: 500 }`. Ranges are inclusive: 1–50, 1–1,000, and 50–2,000 respectively. Reject NaN, infinities, missing properties, null, strings, and nonintegers. Do not coerce a service/worker input such as `"100"` into a number.
 
-The form's numeric model may temporarily contain NaN when a number input is empty or unparsable. The form adapter handles native parse errors and `required`; it never passes that model to the service without domain validation. Verify this behavior with the installed Angular 22.2.3 native number-input binding, including clearing and pasting. Do not add type casts to disguise a binding mismatch.
+The installed Angular 22.2.3 native number-input binding writes `null` for a cleared input and exposes native parse errors for bad input. The draft therefore uses nullable numeric fields; `required` handles null and the custom finite-integer validator handles other invalid numbers. The form never passes its draft to the service without domain validation. Clearing and actual clipboard paste were verified in production Chromium. No cast disguises a binding mismatch.
 
 Symbols are computed from IDs: `SIM001` through `SIM050`. IDs and symbol mappings are stable within a run; instrument count changes only at reset.
 
@@ -683,21 +683,25 @@ Exit: no old result can overwrite a new run, no navigation creates a producer, a
 
 ### Step 6 — Dashboard and Signal Forms settings
 
-- [ ] Replace Hello World with dashboard/settings lazy routes and shell navigation.
-- [ ] Implement semantic table, formatting, pause/resume, pending state, error/retry, and nominal producer status.
-- [ ] Implement isolated settings draft with Signal Forms and Apply validation.
-- [ ] Add scoped external SCSS, keyboard/focus/labels/error associations, and narrow-screen layout.
-- [ ] Add user-facing Angular tests and route persistence assertions.
+- [x] Replace Hello World with dashboard/settings lazy routes and shell navigation.
+- [x] Implement semantic table, formatting, pause/resume, pending state, error/retry, and nominal producer status.
+- [x] Implement isolated settings draft with Signal Forms and Apply validation.
+- [x] Add scoped external SCSS, keyboard/focus/labels/error associations, and narrow-screen layout.
+- [x] Add user-facing Angular tests and route persistence assertions.
+
+Completed 2026-10-25. The two lazy pages share lifecycle feedback and controls. Dashboard rows format once per changed metrics snapshot and retain DOM identity by instrument ID; initial rows show unavailable values and zero volume. Settings uses the installed native nullable-number contract, an isolated draft, Signal Forms submission, and domain validation before Apply. Tests exercise worked-example rendering, pending/confirmed controls, failures/retry, form boundaries, blank input, draft isolation, identical/paused/rapid Apply, and actual page navigation preserving one producer. Scoped external SCSS, table overflow, focus states, labels, and error associations were verified on desktop and at 375 px width.
 
 Exit: all required behavior works through the UI with unavailable initial values, exact cumulative totals, and an accessible form.
 
 ### Step 7 — Production quality, latency, and security
 
-- [ ] Integrate Rust/Wasm gates without weakening existing lint/type/coverage/budget requirements.
-- [ ] Run `npm run check` and dependency audit review; fix failures within scope.
-- [ ] Run real browser worker/transfer smoke checks on current Chromium and Firefox; add WebKit smoke where available and report gaps.
-- [ ] Measure max-rate latency, responsiveness, and memory against section 11.2; investigate failures.
-- [ ] Verify final CSP, no inline content, MIME, missing-asset behavior, deep links, and error/retry paths using production output.
+- [x] Integrate Rust/Wasm gates without weakening existing lint/type/coverage/budget requirements.
+- [x] Run `npm run check` and dependency audit review; fix failures within scope.
+- [x] Run available real-browser worker/transfer smoke checks and record Firefox/WebKit availability gaps.
+- [x] Measure max-rate latency, responsiveness, and memory against section 11.2; investigate failures.
+- [x] Verify final CSP, no inline content, MIME, missing-asset behavior, deep links, and error/retry paths using production output.
+
+Completed locally 2026-10-25 with the browser gaps below. See [production validation evidence](production-validation.md) for methodology, timing/memory observations, quality gates, and limitations. Production Chromium verifies actual worker/Wasm loading, transfer detachment, the two-page UI, load failure followed by Retry, strict CSP, MIME, and explicit product-route rewrites without missing-asset fallback. Firefox and WebKit smoke attempts could not launch because their Playwright binaries are absent; neither is claimed as passing. No hosting integration or publication was performed.
 
 Exit: quality checks pass; measured results and any platform limitations are recorded. No formal benchmark report or new telemetry product is required.
 

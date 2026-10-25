@@ -1,1 +1,33 @@
-<router-outlet />
+<a
+  class="skip-link"
+  href="#main-content"
+  >Skip to content</a
+>
+<header class="app-header">
+  <a
+    class="brand"
+    routerLink="/dashboard"
+    >Trading Platform <span>Market simulation</span></a
+  >
+  <nav aria-label="Main navigation">
+    <a
+      routerLink="/dashboard"
+      routerLinkActive="active"
+      ariaCurrentWhenActive="page"
+      >Dashboard</a
+    >
+    <a
+      routerLink="/settings"
+      routerLinkActive="active"
+      ariaCurrentWhenActive="page"
+      >Settings</a
+    >
+  </nav>
+</header>
+<main
+  id="main-content"
+  tabindex="-1"
+>
+  <router-outlet />
+</main>
+<footer class="app-footer">Fictional instruments · Simulated prices · USD</footer>

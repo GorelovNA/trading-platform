@@ -1,0 +1,35 @@
+.producer-settings {
+  form {
+    max-width: 40rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: white;
+  }
+  .settings-field {
+    margin-bottom: 1.5rem;
+  }
+  label {
+    font-weight: 650;
+  }
+  input {
+    display: block;
+    width: 100%;
+    max-width: 16rem;
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid #82988e;
+    border-radius: 0.375rem;
+    font: inherit;
+  }
+  input[aria-invalid='true'] {
+    border-color: #a12626;
+  }
+  .field-errors {
+    color: #a12626;
+    font-size: 0.875rem;
+  }
+  .field-errors p {
+    margin-bottom: 0;
+  }
+}

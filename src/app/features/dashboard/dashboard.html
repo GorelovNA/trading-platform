@@ -1,0 +1,9 @@
+<section class="market-dashboard">
+  <p class="eyebrow">Live simulation</p>
+  <h1>Market dashboard</h1>
+  <p class="page-intro">
+    Latest trades and order books, with volume and VWAP accumulated since this run began.
+  </p>
+  <app-producer-status />
+  <app-market-table [rows]="rows()" />
+</section>
