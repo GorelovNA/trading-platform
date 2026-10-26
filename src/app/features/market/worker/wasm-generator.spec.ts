@@ -1,4 +1,4 @@
-import { createWasmFactory, loadProtocol, WasmGenerator } from './wasm-generator.helper';
+import { createWasmFactory, loadProtocol, WasmGenerator } from './wasm-generator';
 
 describe('Wasm loader', () => {
   const environment = {

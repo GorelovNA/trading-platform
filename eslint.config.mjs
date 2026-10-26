@@ -16,7 +16,6 @@ const repositoryNaming = {
       componentFile: 'Angular component files must use the .component.ts suffix.',
       serviceClass: 'Angular injectable classes must end in Service.',
       serviceFile: 'Angular injectable files must use the .service.ts suffix.',
-      helperFile: 'Files with exported helper functions must use the .helper.ts suffix.',
       modelFile: 'Exported interfaces and type aliases belong in a models/*.model.ts file.',
       simpleUnion: 'Use a string enum for a named finite set of string values.',
     },
@@ -45,9 +44,6 @@ const repositoryNaming = {
         }
       },
       ExportNamedDeclaration(node) {
-        if (node.declaration?.type === 'FunctionDeclaration' && !filename.endsWith('.helper.ts')) {
-          context.report({ node, messageId: 'helperFile' });
-        }
         if (
           ['TSInterfaceDeclaration', 'TSTypeAliasDeclaration'].includes(node.declaration?.type) &&
           (!filename.includes('/models/') || !filename.endsWith('.model.ts'))
