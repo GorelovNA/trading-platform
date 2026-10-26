@@ -48,10 +48,6 @@ It establishes local behavior, not deployed behavior or hosting configuration.
   referenced the prior published preview. Restoration commit `a6b58d5` removes
   the assertion and was pushed to the preview branch. The intentional failure
   never existed on `main`; no check or hook was disabled.
-- The deployed deep-link fix exercised the small-change/test/push-to-demo
-  workflow. The [interview walkthrough](interview-walkthrough.md) is ready for
-  the candidate to practice explaining. Firefox/WebKit and actual hidden-tab
-  behavior retain the limitations recorded in the local validation document.
 
 ## Connect the project
 
@@ -120,9 +116,9 @@ On the actual production URL, verify:
 - Load failure gives actionable feedback and Retry recovers. Run the maximum
   settings and confirm navigation and controls remain usable.
 
-The repository is public at handoff, so interviewer invitations are unnecessary.
-If visibility later becomes private, verify access with the actual interviewer
-identities; collaborator invitations must be accepted. Demo access is independent
+The repository is public at handoff, so collaborator invitations are unnecessary.
+If visibility later becomes private, verify access with the intended collaborator
+accounts; collaborator invitations must be accepted. Demo access is independent
 of repository visibility.
 
 ## Push-to-demo workflow

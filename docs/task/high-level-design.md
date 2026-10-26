@@ -13,7 +13,7 @@ Requirements: [task-description.md](../task-description.md). That document remai
 
 ## 1. Purpose and scope
 
-Build a modern, secure, responsive Angular application with a live market dashboard and producer settings. A candidate-written Rust library compiled to WebAssembly generates simulated trades and book snapshots inside a dedicated Web Worker. TypeScript in the worker calculates cumulative metrics. Angular renders bounded snapshots rather than processing the event stream.
+Build a modern, secure, responsive Angular application with a live market dashboard and producer settings. A Rust library compiled to WebAssembly generates simulated trades and book snapshots inside a dedicated Web Worker. TypeScript in the worker calculates cumulative metrics. Angular renders bounded snapshots rather than processing the event stream.
 
 Version one includes the five required metrics, settings validation, pause/resume, run reset, producer status, meaningful failures, tests, and automatic deployment. It uses semantic HTML and SCSS. A backend, authentication, real market feeds, order execution, persistence, charts, and UI kits are outside this version. Future visual improvements can consume the same view models without changing the simulation pipeline.
 

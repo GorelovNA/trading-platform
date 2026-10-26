@@ -130,9 +130,7 @@ build-skip commit prefixes. Keep the submitted demo accessible without Cloudflar
 Access authentication. The app needs no runtime environment variables or secrets.
 
 See the [deployment and submission checklist](docs/task/deployment.md) for live
-verification, access, failure diagnosis, and evidence still needed. The
-[interview walkthrough](docs/task/interview-walkthrough.md) covers the architecture
-and a small-change rehearsal.
+verification, access, failure diagnosis, and evidence still needed.
 
 ## Troubleshooting
 
@@ -149,7 +147,7 @@ and a small-change rehearsal.
   `application/wasm` MIME type, CSP response headers, and hashed worker/binary
   paths. Missing assets must return 404. Retry recreates the worker; an old tab
   after a deployment may need a reload to fetch current assets.
-- **Interviewer cannot open the repository:** verify that GitHub visibility is
+- **Repository access fails:** verify that GitHub visibility is
   still public. If it becomes private, collaborators need accepted invitations.
   Test the demo separately in a signed-out browser.
 

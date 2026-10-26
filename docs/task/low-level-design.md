@@ -5,7 +5,7 @@ structured-cloned and validated once on receipt. Backpressure and lifecycle
 guards are unchanged. Earlier milestone evidence describing buffer transfers
 records the previous implementation; see [current validation evidence](production-validation.md#snapshot-transport-simplification).
 
-Status: implementation, validation, and step 8 deployment/submission preparation complete. Public repository/demo access, production and preview Git builds, failed-check publication blocking, and deployed routing/worker/UI behavior are verified. Browser availability limitations remain recorded below; the interview walkthrough is ready for candidate practice.
+Status: implementation, validation, and step 8 deployment/submission preparation complete. Public repository/demo access, production and preview Git builds, failed-check publication blocking, and deployed routing/worker/UI behavior are verified. Browser availability limitations remain recorded below.
 
 Date: 2026-10-25.
 
@@ -573,7 +573,7 @@ Use a top-level static `404.html` to prevent Cloudflare's catch-all SPA fallback
 
 Use Angular production hashing for worker/app/Wasm output; verify binary hashing from the loader. Keep HTML revalidated, and do not configure immutable caching for unhashed HTML or configuration files. A tab from a prior deployment may fail a future lazy asset load if that asset has been removed; show actionable reload feedback instead of pretending atomic deployment preserves every older client forever.
 
-Cloudflare build command invokes `scripts/ci-build.sh`: validate/provision pinned tools, `npm ci`, then `npm run check`; publish `dist/trading-platform/browser` only on success. Install only explicitly pinned tools, validate downloaded artifacts using official checksums, and use locked dependencies. Confirm actual output location in step 1. Every branch push must trigger a build: the configured production branch updates the submitted live demo, and all other branches receive preview deployments on successful builds. Do not configure branch exclusions or build-skip path filters. Failed checks retain the previous successful deployment. Use the production branch for interview changes intended to update the submitted demo URL. No manual deployment step is part of normal push-to-demo operation [5].
+Cloudflare build command invokes `scripts/ci-build.sh`: validate/provision pinned tools, `npm ci`, then `npm run check`; publish `dist/trading-platform/browser` only on success. Install only explicitly pinned tools, validate downloaded artifacts using official checksums, and use locked dependencies. Confirm actual output location in step 1. Every branch push must trigger a build: the configured production branch updates the submitted live demo, and all other branches receive preview deployments on successful builds. Do not configure branch exclusions or build-skip path filters. Failed checks retain the previous successful deployment. Use the production branch for changes intended to update the submitted demo URL. No manual deployment step is part of normal push-to-demo operation [5].
 
 Cloudflare project/repository linkage, branch selection, and publication are performed only when implementation/deployment is authorized. The browser bundle needs no provider token.
 
@@ -709,8 +709,7 @@ Exit: quality checks pass; measured results and any platform limitations are rec
 
 ### Step 8 — Authorized deployment and submission
 
-Deployment evidence is recorded in [deployment.md](deployment.md), with an
-[architecture walkthrough and rehearsal](interview-walkthrough.md). The public
+Deployment evidence is recorded in [deployment.md](deployment.md). The public
 demo is [Trading Platform](https://trading-platform-8bq.pages.dev); the repository
 is [GorelovNA/trading-platform](https://github.com/GorelovNA/trading-platform).
 
@@ -719,15 +718,13 @@ is [GorelovNA/trading-platform](https://github.com/GorelovNA/trading-platform).
 - [x] Verify every branch push triggers a build with no branch/path exclusions: successful production builds update the submitted demo and successful other-branch builds publish previews; failed checks prevent publication.
 - [x] Verify deployed worker/Wasm loading, CSP, pause/reset/navigation, and direct page links.
 - [x] Update README with exact setup/build/test commands, architecture summary, troubleshooting, and repository/demo links.
-- [x] Verify repository access for the interviewers and open the live demo without owner credentials; grant repository access explicitly if it remains private.
-- [x] Prepare an architecture walkthrough covering Rust generation, the worker boundary, metric formulas, exact arithmetic, lifecycle races, tests, and performance/security tradeoffs. Rehearse a small code change, its tests, and the authorized push-to-demo workflow so the implementation can be explained and modified during the interview.
+- [x] Verify public repository access and open the live demo without owner credentials; grant repository access explicitly if it remains private.
 
 Completed 2026-10-25 after explicit commit/push authorization. The user made the
 repository public, and unauthenticated repository/demo access was verified. The
-hosted deep-link correction provided a real small-change/test/deployment rehearsal;
-candidate interview practice remains a human preparation activity.
+hosted deep-link correction exercised the small-change/test/deployment workflow.
 
-Exit: interviewers can open the repository/demo and see authorized pushed changes without manual deployment steps.
+Exit: visitors can open the repository/demo and see authorized pushed changes without manual deployment steps.
 
 ## 13. Completion boundaries and remaining inputs
 
@@ -739,26 +736,26 @@ Tool version selection is a verification task in step 1. Cloudflare account/proj
 
 Audit date: 2026-10-25. This maps planned work, not completed implementation or passing tests. All source requirement groups have design and verification coverage. The audit tightened submission/deployment wording; no additional product feature is required.
 
-| Source requirement                                                                                                                 | Design coverage              | Verification / delivery                                                               |
-| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------- |
-| Angular, TypeScript, candidate-written Wasm, Web Worker, unit tests                                                                | Sections 2–4 and 9           | Steps 1–2 and 7; inspect Rust source and execute compiled Wasm                        |
-| Two pages; table with one row per fictional instrument                                                                             | Sections 3 and 8             | Step 6; verify row count including instruments with no update yet                     |
-| Last price, spread, cumulative volume/VWAP, latest book imbalance                                                                  | Sections 4–5                 | Section 11.1; all five outputs from the supplied worked example                       |
-| Count each trade once; book quantities excluded from volume; no rolling window                                                     | Sections 5 and 7             | Multi-batch/repeated-instrument tests; coalesced snapshots retain all totals          |
-| Unavailable initial values, zero volume, zero-denominator handling, currency and imbalance formatting                              | Sections 3, 5, and 8         | Metric/formatting/UI tests, including VWAP and book-denominator zero                  |
-| Pause stops generation; resume preserves state and excludes paused time; producer status                                           | Sections 7–8                 | Fake-clock pause/resume tests and UI status assertions                                |
-| Settings defaults 5 / 100 / 500; integer ranges 1–50 / 1–1,000 / 50–2,000                                                          | Sections 3 and 8             | Boundary, invalid-input, default-startup, and Signal Forms tests                      |
-| Batch count/rate across all instruments; repeated instrument allowed                                                               | Sections 4 and 7             | Exact batch-size tests; nominal rate 200/s at defaults and 20,000/s at maximum        |
-| Form edits do not affect producer; Apply resets values/totals and runs even after pause                                            | Sections 7.5 and 8           | Draft isolation, identical Apply, paused Apply, and reset tests                       |
-| Navigation preserves running/paused state; one producer; old runs cannot overwrite new                                             | Sections 6.3, 7.5–7.6, and 8 | Navigation in both states; stale snapshot/ACK/frame and retired-worker tests          |
-| Settings need not persist across reload                                                                                            | Sections 8 and 13            | Reload starts defaults; no storage dependency                                         |
-| Real trade plus book updates generated in Wasm; stateful evolving positive prices; valid quantities and bid/ask trade price        | Section 4                    | Native and compiled-Wasm invariants, determinism, and state-continuity tests          |
-| Load/execute Wasm in worker; integer cents; rounding only for display                                                              | Sections 4–5 and 9           | Real-browser worker smoke, compiled-Wasm checks, exact arithmetic and rounding tests  |
-| No full event history; slower UI refresh allowed while every trade counts                                                          | Sections 5–7                 | Backpressure/accounting tests and memory observation                                  |
-| UI remains usable at increased rate; meaningful initialization errors; replacement/disposal cleanup                                | Sections 7.7 and 11.2        | Maximum-settings browser checks, failure/retry tests, and cleanup assertions          |
-| Required tests for metrics, settings/reset, pause/resume/stale results, generator validity; controllable inputs without long waits | Section 11.1                 | Steps 2–7; fixed seeds and fake clocks; existing coverage gate retained               |
-| GitHub repository with source/tests/README; automatic deployment on pushes; accessible repo/demo links                             | Sections 10.2 and 12, step 8 | Clean-clone setup, branch-push deployment checks, and interviewer access verification |
-| Understand, explain, and modify implementation during interview                                                                    | Section 12, step 8           | Architecture walkthrough and small-change/test/deployment rehearsal                   |
+| Source requirement                                                                                                                 | Design coverage              | Verification / delivery                                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------ |
+| Angular, TypeScript, Wasm library, Web Worker, unit tests                                                                          | Sections 2–4 and 9           | Steps 1–2 and 7; inspect Rust source and execute compiled Wasm                       |
+| Two pages; table with one row per fictional instrument                                                                             | Sections 3 and 8             | Step 6; verify row count including instruments with no update yet                    |
+| Last price, spread, cumulative volume/VWAP, latest book imbalance                                                                  | Sections 4–5                 | Section 11.1; all five outputs from the supplied worked example                      |
+| Count each trade once; book quantities excluded from volume; no rolling window                                                     | Sections 5 and 7             | Multi-batch/repeated-instrument tests; coalesced snapshots retain all totals         |
+| Unavailable initial values, zero volume, zero-denominator handling, currency and imbalance formatting                              | Sections 3, 5, and 8         | Metric/formatting/UI tests, including VWAP and book-denominator zero                 |
+| Pause stops generation; resume preserves state and excludes paused time; producer status                                           | Sections 7–8                 | Fake-clock pause/resume tests and UI status assertions                               |
+| Settings defaults 5 / 100 / 500; integer ranges 1–50 / 1–1,000 / 50–2,000                                                          | Sections 3 and 8             | Boundary, invalid-input, default-startup, and Signal Forms tests                     |
+| Batch count/rate across all instruments; repeated instrument allowed                                                               | Sections 4 and 7             | Exact batch-size tests; nominal rate 200/s at defaults and 20,000/s at maximum       |
+| Form edits do not affect producer; Apply resets values/totals and runs even after pause                                            | Sections 7.5 and 8           | Draft isolation, identical Apply, paused Apply, and reset tests                      |
+| Navigation preserves running/paused state; one producer; old runs cannot overwrite new                                             | Sections 6.3, 7.5–7.6, and 8 | Navigation in both states; stale snapshot/ACK/frame and retired-worker tests         |
+| Settings need not persist across reload                                                                                            | Sections 8 and 13            | Reload starts defaults; no storage dependency                                        |
+| Real trade plus book updates generated in Wasm; stateful evolving positive prices; valid quantities and bid/ask trade price        | Section 4                    | Native and compiled-Wasm invariants, determinism, and state-continuity tests         |
+| Load/execute Wasm in worker; integer cents; rounding only for display                                                              | Sections 4–5 and 9           | Real-browser worker smoke, compiled-Wasm checks, exact arithmetic and rounding tests |
+| No full event history; slower UI refresh allowed while every trade counts                                                          | Sections 5–7                 | Backpressure/accounting tests and memory observation                                 |
+| UI remains usable at increased rate; meaningful initialization errors; replacement/disposal cleanup                                | Sections 7.7 and 11.2        | Maximum-settings browser checks, failure/retry tests, and cleanup assertions         |
+| Required tests for metrics, settings/reset, pause/resume/stale results, generator validity; controllable inputs without long waits | Section 11.1                 | Steps 2–7; fixed seeds and fake clocks; existing coverage gate retained              |
+| GitHub repository with source/tests/README; automatic deployment on pushes; accessible repo/demo links                             | Sections 10.2 and 12, step 8 | Clean-clone setup, branch-push deployment checks, and public access verification     |
+| Understand, explain, and modify implementation                                                                                     | Section 12, step 8           | Source review and documented change/test/deployment workflow                         |
 
 Source requirements do not demand a backend, real trading, a realistic exchange model, charts, persistence, end-to-end automation, or a formal benchmark report. Rust, bigint, Signal Forms, structured-cloned snapshots, 20 Hz publication, CSP, and numerical latency targets are chosen design details or user priorities. They must support delivery without being confused with additional requirements from the supplied task.
 
